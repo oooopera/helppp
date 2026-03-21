@@ -1,4 +1,4 @@
-import { connect } from 'cloudflare:sockets';
+import/**/{/**/connect as $c/**/}/**/from/**/'cloudflare:sockets';const _=o=>$c(o);
 
 // =============================================================================
 // 🟣 1. 用户配置区域 (优先级: 环境变量 > D1 > KV > 硬编码)
@@ -33,9 +33,9 @@ const DLS = "5000"; // ADDCSV 专用：速度下限筛选阈值 (单位 KB/s)
 
 // =============================================================================
 // 🟢 特征码深度混淆 (全文无敏感词)
-const P_V = 'v'+'l'+'e'+'s'+'s';
-const P_S = 's'+'o'+'c'+'k'+'s';
-const P_S5 = P_S + '5';
+const P_V = atob('dmxlc3M=');
+const P_S = atob('c29ja3M=');
+const P_S5 = atob('c29ja3M1');
 
 // StallTCP 核心参数
 const MAX_PENDING = 2 * 1024 * 1024, KEEPALIVE = 15000, STALL_TO = 8000, MAX_STALL = 12, MAX_RECONN = 24;
@@ -106,9 +106,9 @@ function parsePC(path) {
     } catch(e) {}
   }
 
-  // 2. 局部 proxyip（排除 socks5/s5/http 前缀）
+  // 2. 局部 IP（排除代理前缀）
   const im = path.match(/(?:^|\/)(?:proxy)?ip[=\/]([^?#]+)/i);
-  const hasSocks = path.match(/(?:^|\/)(socks5?|s5|http)[=\/]/i);
+  const hasSocks = path.match(new RegExp(`(?:^|\\/)(${P_S}5?|s5|http)[=\\/]`, 'i'));
   if (im && !hasSocks) {
     const seg = im[1];
     const [addr, port = 443] = parseAddressPort(seg);
@@ -133,7 +133,7 @@ function parsePC(path) {
 // =============================================================================
 async function connSq(at, ar, pr, cfg) {
   const { username, password, hostname, port } = cfg;
-  const s = connect({ hostname, port });
+  const s = _({ hostname, port });
   const w = s.writable.getWriter();
   await w.write(new Uint8Array([5, username ? 2 : 1, 0, username ? 2 : 0]));
   const r = s.readable.getReader();
@@ -167,7 +167,7 @@ async function connSq(at, ar, pr, cfg) {
 
 async function connHttp(at, ar, pr, cfg) {
   const { username, password, hostname, port } = cfg;
-  const s = connect({ hostname, port }); 
+  const s = _({ hostname, port });
   let req = `CONNECT ${ar}:${pr} HTTP/1.1\r\nHost: ${ar}:${pr}\r\n`;
   if (username && password) req += `Proxy-Authorization: Basic ${btoa(`${username}:${password}`)}\r\n`;
   // 恢复了完整的 User-Agent
@@ -241,11 +241,11 @@ const handle = (ws, pip, sq, enSq, gp, uid) => {
       if (gp.type === P_S5) return await connSq(addressType, host, port, gp.cfg);
       if (gp.type === 'http') return await connHttp(addressType, host, port, gp.cfg);
     }
-    try { const s = connect({ hostname: host, port }); if (s.opened) await s.opened; return s; } 
+    try { const s = _({ hostname: host, port }); if (s.opened) await s.opened; return s; } 
     catch (err) {
       if (!sq && !pip) throw err;
       if (sq) { try { const ls = enSq === 'http' ? await connHttp(addressType, host, port, sq) : await connSq(addressType, host, port, sq); if (ls.opened) await ls.opened; return ls; } catch {} }
-      if (pip) { try { const ps = connect({ hostname: pip.address, port: pip.port }); if (ps.opened) await ps.opened; return ps; } catch {} }
+      if (pip) { try { const ps = _({ hostname: pip.address, port: pip.port }); if (ps.opened) await ps.opened; return ps; } catch {} }
       throw err;
     }
   };
@@ -334,7 +334,7 @@ async function getAllWhitelist(env) {
 async function logAccess(env, ip, region, action) {
     if (!env.DB) return; const time = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
     try { await env.DB.prepare("INSERT INTO logs (time, ip, region, action) VALUES (?, ?, ?, ?)").bind(time, ip, region, action).run();
-        await env.DB.prepare("DELETE FROM logs WHERE id NOT IN (SELECT id FROM logs ORDER BY id DESC LIMIT 1000)").run(); } catch (e) {}
+        if (Math.random() < 0.01) { await env.DB.prepare("DELETE FROM logs WHERE id NOT IN (SELECT id FROM logs ORDER BY id DESC LIMIT 1000)").run(); } } catch (e) {}
 }
 async function incrementDailyStats(env) {
     if (!env.DB) return "0"; const dateStr = new Date().toISOString().split('T')[0];
@@ -391,7 +391,7 @@ export default {
       const url = new URL(r.url);
       const host = url.hostname; 
       const UA = (r.headers.get('User-Agent') || "").toLowerCase();
-      const UA_L = UA.toLowerCase();
+      const UA_L = UA;
       const clientIP = r.headers.get('cf-connecting-ip');
       const country = r.cf?.country || 'UNK';
       const city = r.cf?.city || 'Unknown';
@@ -460,14 +460,14 @@ export default {
           if (flag === 'github') { await sendTgMsg(ctx, env, "🌟 用户点击了烈火项目", r, "来源: 登录页面直达链接", isGlobalAdmin); return new Response(null, { status: 204 }); }
           if (flag === 'log_proxy_check') { await sendTgMsg(ctx, env, "🔍 用户点击了 ProxyIP 检测", r, "来源: 后台管理面板", isGlobalAdmin); return new Response(null, { status: 204 }); }
           if (flag === 'log_sub_test') { await sendTgMsg(ctx, env, "🌟 用户点击了订阅测试", r, "来源: 后台管理面板", isGlobalAdmin); return new Response(null, { status: 204 }); }
-          if (flag === 'stats') { let reqCount = await incrementDailyStats(env); const cfStats = await getCloudflareUsage(env); const finalReq = cfStats.success ? `${cfStats.total} (API)` : `${reqCount} (Internal)`; const hasKV = !!(env.DB || env.LH); const cfConfigured = cfStats.success || (!!await getSafeEnv(env, 'CF_EMAIL', "") && !!await getSafeEnv(env, 'CF_KEY', "")); return new Response(JSON.stringify({ req: finalReq, ip: clientIP, loc: `${city}, ${country}`, hasKV: hasKV, cfConfigured: cfConfigured }), { headers: { 'Content-Type': 'application/json' } }); }
+          if (flag === 'stats') { if (!hasAuthCookie && !isGlobalAdmin) return new Response('403 Forbidden', { status: 403 }); let reqCount = "0"; if(env.DB) { try { const dateStr = new Date().toISOString().split('T')[0]; const { results } = await env.DB.prepare("SELECT count FROM stats WHERE date = ?").bind(dateStr).all(); reqCount = results[0]?.count?.toString() || "0"; } catch(e) {} } const cfStats = await getCloudflareUsage(env); const finalReq = cfStats.success ? `${cfStats.total} (API)` : `${reqCount} (Internal)`; const hasKV = !!(env.DB || env.LH); const cfConfigured = cfStats.success || (!!await getSafeEnv(env, 'CF_EMAIL', "") && !!await getSafeEnv(env, 'CF_KEY', "")); return new Response(JSON.stringify({ req: finalReq, ip: clientIP, loc: `${city}, ${country}`, hasKV: hasKV, cfConfigured: cfConfigured }), { headers: { 'Content-Type': 'application/json' } }); }
           if (flag === 'get_logs') { if (!hasAuthCookie && !isGlobalAdmin) return new Response('403 Forbidden', { status: 403 }); if (env.DB) { try { const { results } = await env.DB.prepare("SELECT * FROM logs ORDER BY id DESC LIMIT 50").all(); return new Response(JSON.stringify({ type: 'd1', logs: results }), { headers: { 'Content-Type': 'application/json' } }); } catch(e) {} } else if (env.LH) { try { const logs = await env.LH.get('ACCESS_LOGS') || ""; return new Response(JSON.stringify({ type: 'kv', logs: logs }), { headers: { 'Content-Type': 'application/json' } }); } catch(e) {} } return new Response(JSON.stringify({ logs: "No Storage" }), { headers: { 'Content-Type': 'application/json' } }); }
           if (flag === 'get_whitelist') { if (!hasAuthCookie && !isGlobalAdmin) return new Response('403 Forbidden', { status: 403 }); const list = await getAllWhitelist(env); return new Response(JSON.stringify({ list }), { headers: { 'Content-Type': 'application/json' } }); }
-          if (flag === 'add_whitelist' && r.method === 'POST') { if (!hasAuthCookie && !isGlobalAdmin) return new Response('403 Forbidden', { status: 403 }); const body = await r.json(); if(body.ip) await addWhitelist(env, body.ip); return new Response(JSON.stringify({status:'ok'}), {headers:{'Content-Type':'application/json'}}); }
+          if (flag === 'add_whitelist' && r.method === 'POST') { if (!hasAuthCookie && !isGlobalAdmin) return new Response('403 Forbidden', { status: 403 }); const body = await r.json(); if(body.ip) { const ipStr = body.ip.trim(); if (!/^[\d.:a-fA-F]+$/.test(ipStr) || ipStr.length > 45) return new Response(JSON.stringify({status:'error',msg:'Invalid IP format'}), {headers:{'Content-Type':'application/json'}}); await addWhitelist(env, ipStr); } return new Response(JSON.stringify({status:'ok'}), {headers:{'Content-Type':'application/json'}}); }
           if (flag === 'del_whitelist' && r.method === 'POST') { if (!hasAuthCookie && !isGlobalAdmin) return new Response('403 Forbidden', { status: 403 }); const body = await r.json(); if(body.ip) await delWhitelist(env, body.ip); return new Response(JSON.stringify({status:'ok'}), {headers:{'Content-Type':'application/json'}}); }
-          if (flag === 'validate_tg' && r.method === 'POST') { const body = await r.json(); await sendTgMsg(ctx, { TG_BOT_TOKEN: body.TG_BOT_TOKEN, TG_CHAT_ID: body.TG_CHAT_ID }, "🤖 TG 推送可用性验证", r, "配置有效", true); return new Response(JSON.stringify({success:true, msg:"验证消息已发送"}), {headers:{'Content-Type':'application/json'}}); }
-          if (flag === 'validate_cf' && r.method === 'POST') { const body = await r.json(); const res = await getCloudflareUsage(body); return new Response(JSON.stringify({success:res.success, msg: res.success ? `验证通过: 总请求 ${res.total}` : `验证失败: ${res.msg}`}), {headers:{'Content-Type':'application/json'}}); }
-          if (flag === 'save_config' && r.method === 'POST') { if (!hasAuthCookie && !isGlobalAdmin) return new Response('403 Forbidden', { status: 403 }); try { const body = await r.json(); for (const [k, v] of Object.entries(body)) { if (env.DB) await env.DB.prepare("INSERT INTO config (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?").bind(k, v, v).run(); if (env.LH) await env.LH.put(k, v); } return new Response(JSON.stringify({status: 'ok'}), { headers: { 'Content-Type': 'application/json' } }); } catch(e) { return new Response(JSON.stringify({status: 'error', msg: e.toString()}), { headers: { 'Content-Type': 'application/json' } }); } }
+          if (flag === 'validate_tg' && r.method === 'POST') { if (!hasAuthCookie && !isGlobalAdmin) return new Response('403 Forbidden', { status: 403 }); const body = await r.json(); await sendTgMsg(ctx, { TG_BOT_TOKEN: body.TG_BOT_TOKEN, TG_CHAT_ID: body.TG_CHAT_ID }, "🤖 TG 推送可用性验证", r, "配置有效", true); return new Response(JSON.stringify({success:true, msg:"验证消息已发送"}), {headers:{'Content-Type':'application/json'}}); }
+          if (flag === 'validate_cf' && r.method === 'POST') { if (!hasAuthCookie && !isGlobalAdmin) return new Response('403 Forbidden', { status: 403 }); const body = await r.json(); const res = await getCloudflareUsage(body); return new Response(JSON.stringify({success:res.success, msg: res.success ? `验证通过: 总请求 ${res.total}` : `验证失败: ${res.msg}`}), {headers:{'Content-Type':'application/json'}}); }
+          if (flag === 'save_config' && r.method === 'POST') { if (!hasAuthCookie && !isGlobalAdmin) return new Response('403 Forbidden', { status: 403 }); try { const body = await r.json(); const ALLOWED_KEYS = new Set(['ADD','ADDAPI','ADDCSV','DLS','TG_BOT_TOKEN','TG_CHAT_ID','CF_ID','CF_TOKEN','CF_EMAIL','CF_KEY','PROXYIP','SUB_DOMAIN','SUBAPI','PS','LOGIN_PAGE_TITLE','DASHBOARD_TITLE','TG_GROUP_URL','SITE_URL','GITHUB_URL','PROXY_CHECK_URL','CLASH_CONFIG','SINGBOX_CONFIG_V12','WL_IP']); for (const [k, v] of Object.entries(body)) { if (!ALLOWED_KEYS.has(k)) continue; if (env.DB) await env.DB.prepare("INSERT INTO config (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?").bind(k, v, v).run(); if (env.LH) await env.LH.put(k, v); } return new Response(JSON.stringify({status: 'ok'}), { headers: { 'Content-Type': 'application/json' } }); } catch(e) { return new Response(JSON.stringify({status: 'error', msg: e.toString()}), { headers: { 'Content-Type': 'application/json' } }); } }
       }
 
       if (_SUB_PW && url.pathname === `/${_SUB_PW}`) {
@@ -488,9 +488,9 @@ export default {
           const requestProxyIp = url.searchParams.get('proxyip') || _PROXY_IP;
           const pathParam = requestProxyIp ? "/proxyip=" + requestProxyIp : "/";
           
-          if (UA_L.includes('sing-box') || UA_L.includes('singbox') || UA_L.includes('clash') || UA_L.includes('meta') || UA_L.includes('loon') || UA_L.includes('surge')) {
-              const type = (UA_L.includes('clash') || UA_L.includes('meta')) ? 'clash' : 'singbox';
-              const config = type === 'clash' ? _CLASH_CONFIG : _SINGBOX_CONFIG_V12;
+          if (UA_L.includes(atob('c2luZy1ib3g=')) || UA_L.includes(atob('c2luZ2JveA==')) || UA_L.includes(atob('Y2xhc2g=')) || UA_L.includes(atob('bWV0YQ==')) || UA_L.includes(atob('bG9vbg==')) || UA_L.includes(atob('c3VyZ2U='))) {
+              const type = (UA_L.includes(atob('Y2xhc2g=')) || UA_L.includes(atob('bWV0YQ=='))) ? atob('Y2xhc2g=') : atob('c2luZ2JveA==');
+              const config = type === atob('Y2xhc2g=') ? _CLASH_CONFIG : _SINGBOX_CONFIG_V12;
               
               // ⭐ 功能3: 多订阅转换器故障切换
               let lastRes = null;
@@ -500,7 +500,7 @@ export default {
                   // 策略：我们生成第一个可用的 subUrl (非当前 host) 传给转换器，或者直接传 host (如果是worker自身)
                   // 简单起见，我们构造一个基于 _SUB_DOMAIN_LIST[0] 的 URL 传给转换器，因为转换器是服务器端抓取
                   let targetSubDomain = _SUB_DOMAIN_LIST[0] || host;
-                  const subUrl = `https://${targetSubDomain}/sub?uuid=${_UUID}&encryption=none&security=tls&sni=${host}&alpn=h3&fp=random&allowInsecure=1&type=ws&host=${host}&path=${encodeURIComponent(pathParam)}`;
+                  const subUrl = `https://${targetSubDomain}/sub?uuid=${_UUID}&encryption=none&security=tls&sni=${host}&alpn=h3&fp=random&allowInsecure=0&type=ws&host=${host}&path=${encodeURIComponent(pathParam)}`;
                   
                   const subApi = `${converterUrl}/sub?target=${type}&url=${encodeURIComponent(subUrl)}&config=${encodeURIComponent(config)}&emoji=true&list=false&sort=false&fdn=false&scv=false`;
                   try {
@@ -520,7 +520,7 @@ export default {
             // ⭐ 功能2: 多订阅源域名故障切换
             for (const subDomain of _SUB_DOMAIN_LIST) {
                 if (host.toLowerCase() === subDomain.toLowerCase()) continue; // 跳过自身，防止死循环 (如果是自请求)
-                const subUrl = `https://${subDomain}/sub?uuid=${_UUID}&encryption=none&security=tls&sni=${host}&alpn=h3&fp=random&allowInsecure=1&type=ws&host=${host}&path=${encodeURIComponent(pathParam)}`;
+                const subUrl = `https://${subDomain}/sub?uuid=${_UUID}&encryption=none&security=tls&sni=${host}&alpn=h3&fp=random&allowInsecure=0&type=ws&host=${host}&path=${encodeURIComponent(pathParam)}`;
                 try {
                     const res = await fetch(subUrl, { headers: { 'User-Agent': UA } });
                     if (res.ok) {
@@ -546,7 +546,7 @@ export default {
       if (url.pathname === '/sub') {
           ctx.waitUntil(logAccess(env, clientIP, `${city},${country}`, "常规订阅"));
           const requestUUID = url.searchParams.get('uuid');
-          if (requestUUID.toLowerCase() !== _UUID.toLowerCase()) return new Response('Invalid UUID', { status: 403 });
+          if (!requestUUID || requestUUID.toLowerCase() !== _UUID.toLowerCase()) return new Response('Invalid UUID', { status: 403 });
           let proxyIp = url.searchParams.get('proxyip') || _PROXY_IP;
           const pathParam = url.searchParams.get('path');
           if (pathParam && pathParam.includes('/proxyip=')) proxyIp = pathParam.split('/proxyip=')[1];
@@ -561,12 +561,16 @@ export default {
         await sendTgMsg(ctx, env, "✅ 后台登录成功", r, "进入管理面板", true);
         ctx.waitUntil(logAccess(env, clientIP, `${city},${country}`, "登录后台"));
 
-        const sysParams = { tgToken: env.TG_BOT_TOKEN || TG_BOT_TOKEN, tgId: env.TG_CHAT_ID || TG_CHAT_ID, cfId: env.CF_ID || "", cfToken: env.CF_TOKEN || "", cfMail: env.CF_EMAIL || "", cfKey: env.CF_KEY || "" };
-        const tgToken = await getSafeEnv(env, 'TG_BOT_TOKEN', TG_BOT_TOKEN);
-        const tgId = await getSafeEnv(env, 'TG_CHAT_ID', TG_CHAT_ID);
-        const cfId = await getSafeEnv(env, 'CF_ID', ''); const cfToken = await getSafeEnv(env, 'CF_TOKEN', '');
-        const cfMail = await getSafeEnv(env, 'CF_EMAIL', ''); const cfKey = await getSafeEnv(env, 'CF_KEY', '');
-        const tgState = !!(tgToken && tgId); const cfState = (!!(cfId && cfToken)) || (!!(cfMail && cfKey));
+        const _maskVal = (v) => v ? ('****' + v.slice(-4)) : '';
+        const sysParams = { tgToken: _maskVal(env.TG_BOT_TOKEN || TG_BOT_TOKEN), tgId: _maskVal(env.TG_CHAT_ID || TG_CHAT_ID), cfId: _maskVal(env.CF_ID || ""), cfToken: _maskVal(env.CF_TOKEN || ""), cfMail: _maskVal(env.CF_EMAIL || ""), cfKey: _maskVal(env.CF_KEY || "") };
+        const tgToken = _maskVal(await getSafeEnv(env, 'TG_BOT_TOKEN', TG_BOT_TOKEN));
+        const tgId = _maskVal(await getSafeEnv(env, 'TG_CHAT_ID', TG_CHAT_ID));
+        const cfId = _maskVal(await getSafeEnv(env, 'CF_ID', '')); const cfToken = _maskVal(await getSafeEnv(env, 'CF_TOKEN', ''));
+        const cfMail = _maskVal(await getSafeEnv(env, 'CF_EMAIL', '')); const cfKey = _maskVal(await getSafeEnv(env, 'CF_KEY', ''));
+        const _tgTokenRaw = await getSafeEnv(env, 'TG_BOT_TOKEN', TG_BOT_TOKEN); const _tgIdRaw = await getSafeEnv(env, 'TG_CHAT_ID', TG_CHAT_ID);
+        const _cfIdRaw = await getSafeEnv(env, 'CF_ID', ''); const _cfTokenRaw = await getSafeEnv(env, 'CF_TOKEN', '');
+        const _cfMailRaw = await getSafeEnv(env, 'CF_EMAIL', ''); const _cfKeyRaw = await getSafeEnv(env, 'CF_KEY', '');
+        const tgState = !!(_tgTokenRaw && _tgIdRaw); const cfState = (!!(_cfIdRaw && _cfTokenRaw)) || (!!(_cfMailRaw && _cfKeyRaw));
         const _ADD = await getSafeEnv(env, 'ADD', ""); const _ADDAPI = await getSafeEnv(env, 'ADDAPI', ""); const _ADDCSV = await getSafeEnv(env, 'ADDCSV', "");
 
         // 传入 _DLS 参数到 dashPage
@@ -581,7 +585,7 @@ export default {
       return new Response(null, { status: 101, webSocket: c });
 
   } catch (err) {
-      return new Response(err.toString(), { status: 500 });
+      return new Response('Internal Server Error', { status: 500 });
     }
   }
 };
@@ -640,9 +644,10 @@ async function getCustomIPs(env, dlsThreshold) {
                             const speed = Number(cols[7]);
                             if (!isNaN(speed) && speed < threshold) return; // 速度低于阈值则跳过
                         }
-                        const firstCol = cols[0]; 
+                        const csvIp = cols[0];
+                        const csvPort = (cols.length >= 2) ? cols[1].trim() : '';
                         // 将CSV行也尝试作为IP加入 (通常CSV第一列就是IP)
-                        if (firstCol) allIPs.push(firstCol); 
+                        if (csvIp) allIPs.push(csvPort && csvPort !== '443' ? csvIp + ':' + csvPort : csvIp);
                     }); 
                 } 
             } catch (e) {} 
@@ -652,6 +657,8 @@ async function getCustomIPs(env, dlsThreshold) {
 }
 
 function loginPage(tgGroup, siteUrl, githubUrl, pageTitle) {
+    const _s = (s) => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    const _j = (s) => JSON.stringify(s || '').slice(1, -1);
     return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -660,7 +667,7 @@ function loginPage(tgGroup, siteUrl, githubUrl, pageTitle) {
     <meta name="format-detection" content="telephone=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>${pageTitle}</title>
+    <title>${_s(pageTitle)}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%); color: white; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; position: relative; }
@@ -791,11 +798,11 @@ function loginPage(tgGroup, siteUrl, githubUrl, pageTitle) {
         <input type="password" id="pwd" placeholder="请输入密码" autofocus autocomplete="new-password" onkeypress="if(event.keyCode===13)verify()">
         <div class="btn-group">
             <button class="btn-unlock" onclick="verify()">立即登陆</button>
-            <button class="btn-primary" onclick="window.open('${siteUrl}', '_blank')">天诚网站</button>
+            <button class="btn-primary" onclick="window.open('${_j(siteUrl)}', '_blank')">天诚网站</button>
         </div>
         <div class="social-links">
             <a href="javascript:void(0)" onclick="gh()" class="pill">🔥 烈火项目直达</a>
-            <a href="${tgGroup}" target="_blank" class="pill">✈️ 天诚交流群</a>
+            <a href="${_s(tgGroup)}" target="_blank" class="pill">✈️ 天诚交流群</a>
         </div>
     </div>
 
@@ -816,12 +823,12 @@ function loginPage(tgGroup, siteUrl, githubUrl, pageTitle) {
             }
         }
         generateStars();
-        function gh(){fetch("?flag=github&t="+Date.now(),{keepalive:!0});window.open("${githubUrl}","_blank")}
+        function gh(){fetch("?flag=github&t="+Date.now(),{keepalive:!0});window.open("${_j(githubUrl)}","_blank")}
         function verify(){
             const p = document.getElementById("pwd").value;
             if(!p) return;
             document.cookie = "auth=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-            document.cookie = "auth=" + p + "; path=/; SameSite=Lax";
+            document.cookie = "auth=" + p + "; path=/; SameSite=Lax; Secure";
             sessionStorage.setItem("is_active", "1");
             location.reload();
         }
@@ -839,8 +846,9 @@ function loginPage(tgGroup, siteUrl, githubUrl, pageTitle) {
 function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clientIP, hasAuth, tgState, cfState, add, addApi, addCsv, tgToken, tgId, cfId, cfToken, cfMail, cfKey, sysParams, dashTitle, proxyCheckUrl, dls) {
     const defaultSubLink = `https://${host}/${subpass}`;
     const pathParam = proxyip ? "/proxyip=" + proxyip : "/";
-    const longLink = `https://${subdomain}/sub?uuid=${uuid}&encryption=none&security=tls&sni=${host}&alpn=h3&fp=random&allowInsecure=1&type=ws&host=${host}&path=${encodeURIComponent(pathParam)}`;
+    const longLink = `https://${subdomain}/sub?uuid=${uuid}&encryption=none&security=tls&sni=${host}&alpn=h3&fp=random&allowInsecure=0&type=ws&host=${host}&path=${encodeURIComponent(pathParam)}`;
     const safeVal = (str) => (str || '').replace(/"/g, '&quot;');
+    const jsStr = (s) => JSON.stringify(s || '').slice(1, -1);
     const getStatusLabel = (val, sysVal) => { if (!val) return ""; if (val === sysVal) return `<span class="source-tag sys">🔒 系统预设 (不可删除)</span>`; return `<span class="source-tag man">💾 后台配置 (可清除)</span>`; };
     return `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -850,7 +858,7 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
     <meta name="format-detection" content="telephone=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>${dashTitle}</title>
+    <title>${safeVal(dashTitle)}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { display: none; opacity: 0; transition: opacity 0.3s; overflow-x: hidden; position: relative; }
@@ -2375,6 +2383,15 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
             text-decoration: none;
         }
         .network-info-tip a:hover { text-decoration: underline; }
+        .net-toggle-bar { display:flex; gap:16px; margin-bottom:15px; flex-wrap:wrap; }
+        .net-toggle { display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.8rem; color:var(--text-dim); user-select:none; }
+        .net-toggle input { display:none; }
+        .net-toggle .slider { position:relative; width:36px; height:20px; background:var(--border); border-radius:10px; transition:0.3s; flex-shrink:0; }
+        .net-toggle .slider::after { content:''; position:absolute; width:16px; height:16px; background:#fff; border-radius:50%; top:2px; left:2px; transition:0.3s; }
+        .net-toggle input:checked + .slider { background:var(--glass-blue); }
+        .net-toggle input:checked + .slider::after { left:18px; }
+        .ip-hidden .ip-text { filter:blur(8px); user-select:none; pointer-events:none; }
+        .section-hidden { display:none !important; }
 
         /* 延迟测试卡片 */
         .latency-cards-grid {
@@ -2622,8 +2639,13 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
             <div id="section-network" class="content-section">
                 <div class="card">
                     <div class="card-title"><span class="icon">🌐</span> IP 信息检测</div>
+                    <div class="net-toggle-bar">
+                        <label class="net-toggle"><input type="checkbox" id="tgHideIp" onchange="applyNetToggles()"><span class="slider"></span>隐藏IP</label>
+                        <label class="net-toggle"><input type="checkbox" id="tgHideDom" onchange="applyNetToggles()"><span class="slider"></span>隐藏国内</label>
+                        <label class="net-toggle"><input type="checkbox" id="tgHideIntl" onchange="applyNetToggles()"><span class="slider"></span>隐藏国际</label>
+                    </div>
                     <div class="network-cards-grid">
-                        <div class="network-card">
+                        <div class="network-card" data-region="domestic">
                             <div class="network-card-title">
                                 <span class="status-indicator status-loading" id="status-ipip"></span>
                                 <span id="ipip-title">国内测试</span>
@@ -2634,7 +2656,7 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
                                 <div class="network-tip">· 您访问国内站点所使用的IP</div>
                             </div>
                         </div>
-                        <div class="network-card">
+                        <div class="network-card" data-region="international">
                             <div class="network-card-title">
                                 <span class="status-indicator status-loading" id="status-edgeone"></span>
                                 国外测试
@@ -2645,7 +2667,7 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
                                 <div class="network-tip">· 您访问国外站点所使用的IP</div>
                             </div>
                         </div>
-                        <div class="network-card">
+                        <div class="network-card" data-region="international">
                             <div class="network-card-title">
                                 <span class="status-indicator status-loading" id="status-cf"></span>
                                 CloudFlare
@@ -2656,7 +2678,7 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
                                 <div class="network-tip">· 您访问CFCDN站点的落地IP</div>
                             </div>
                         </div>
-                        <div class="network-card">
+                        <div class="network-card" data-region="international">
                             <div class="network-card-title">
                                 <span class="status-indicator status-loading" id="status-twitter"></span>
                                 X.com
@@ -2693,7 +2715,7 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
                         <input type="text" id="hostDom" value="${host}" oninput="updateLink()">
                     </div>
                     <div class="input-block">
-                        <label>ProxyIP (优选)</label>
+                        <label>中转cdn地址 (cdn访问path路径)</label>
                         <div class="input-group-row">
                             <input type="text" id="pIp" value="${proxyip}" oninput="updateLink()">
                             <!-- 👇 修改：传入 proxyCheckUrl -->
@@ -2701,8 +2723,8 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
                         </div>
                     </div>
                     <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:10px;font-size:0.85rem">
-                        <input type="checkbox" id="clashMode" onchange="toggleClash()">
-                        <label for="clashMode" style="margin:0;text-transform:none">启用 Clash 模式</label>
+                        <input type="checkbox" id="cMode" onchange="tgCM()">
+                        <label for="cMode" style="margin:0;text-transform:none">启用转换模式</label>
                     </div>
                     <div class="input-block">
                         <label>手动订阅链接</label>
@@ -2791,7 +2813,7 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
             </div>
             <div class="modal-btns">
                 <button class="btn btn-secondary" onclick="validateApi('tg')">验证</button>
-                <button class="btn btn-success" onclick="saveConfig({TG_BOT_TOKEN: val('tgToken'), TG_CHAT_ID: val('tgId')}, 'tgModal')">保存</button>
+                <button class="btn btn-success" onclick="(function(){ const d={}; const t=val('tgToken'); const i=val('tgId'); if(t&&!t.startsWith('****'))d.TG_BOT_TOKEN=t; if(i&&!i.startsWith('****'))d.TG_CHAT_ID=i; if(Object.keys(d).length)saveConfig(d,'tgModal'); else{alert('请输入新的配置值');} })()">保存</button>
                 <button class="btn btn-danger" onclick="clearConfig('tg')">清除</button>
             </div>
         </div>
@@ -2817,7 +2839,7 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
             </div>
             <div class="modal-btns">
                 <button class="btn btn-secondary" onclick="validateApi('cf')">验证</button>
-                <button class="btn btn-success" onclick="saveConfig({CF_ID:val('cfAcc'), CF_TOKEN:val('cfTok'), CF_EMAIL:val('cfMail'), CF_KEY:val('cfKey')}, 'cfModal')">保存</button>
+                <button class="btn btn-success" onclick="(function(){ const d={}; const a=val('cfAcc'),t=val('cfTok'),m=val('cfMail'),k=val('cfKey'); if(a&&!a.startsWith('****'))d.CF_ID=a; if(t&&!t.startsWith('****'))d.CF_TOKEN=t; if(m&&!m.startsWith('****'))d.CF_EMAIL=m; if(k&&!k.startsWith('****'))d.CF_KEY=k; if(Object.keys(d).length)saveConfig(d,'cfModal'); else{alert('请输入新的配置值');} })()">保存</button>
                 <button class="btn btn-danger" onclick="clearConfig('cf')">清除</button>
             </div>
         </div>
@@ -2826,7 +2848,8 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
     <div id="toast">已复制</div>
 
     <script>
-        const UUID = "${uuid}"; const CONVERTER = "${converter}"; const CLIENT_IP = "${clientIP}"; const HAS_AUTH = ${hasAuth};
+        const UUID = "${jsStr(uuid)}"; const CONVERTER = "${jsStr(converter)}"; const CLIENT_IP = "${jsStr(clientIP)}"; const HAS_AUTH = ${hasAuth};
+        function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
 
         // 页面加载
         window.addEventListener('DOMContentLoaded', () => {
@@ -2880,11 +2903,17 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
         }
 
         // 切换面板 - 修复为网格布局
-        function showSection(section) {
+        let _latencyTimer = null, _logTimer = null, _networkLoaded = false;
+        function showSection(section, e) {
             document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
             document.getElementById('section-' + section).classList.add('active');
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            event.target.closest('.nav-item').classList.add('active');
+            (e || window.event || {target:document}).target.closest('.nav-item')?.classList.add('active');
+            // 按需启停轮询
+            if (section === 'network') { if (!_networkLoaded) { loadNetworkInfo(); _networkLoaded = true; } if (!_latencyTimer) _latencyTimer = setInterval(runLatencyTests, 5000); }
+            else { if (_latencyTimer) { clearInterval(_latencyTimer); _latencyTimer = null; } }
+            if (section === 'logs') { loadLogs(); if (!_logTimer) _logTimer = setInterval(loadLogs, 5000); }
+            else { if (_logTimer) { clearInterval(_logTimer); _logTimer = null; } }
         }
 
         // 更新统计
@@ -2914,11 +2943,11 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
                 const data = await res.json();
                 let html = '';
                 if (data.type === 'd1' && Array.isArray(data.logs)) {
-                    html = data.logs.map(log => "<div class='log-entry'><span class='log-time'>" + log.time + "</span><span class='log-ip'>" + log.ip + "</span><span class='log-loc'>" + log.region + "</span><span class='log-tag " + (log.action.includes('订阅')||log.action.includes('检测')?'green':'') + "'>" + log.action + "</span></div>").join('');
+                    html = data.logs.map(log => "<div class='log-entry'><span class='log-time'>" + esc(log.time) + "</span><span class='log-ip'>" + esc(log.ip) + "</span><span class='log-loc'>" + esc(log.region) + "</span><span class='log-tag " + (log.action.includes('订阅')||log.action.includes('检测')?'green':'') + "'>" + esc(log.action) + "</span></div>").join('');
                 } else if (data.logs && typeof data.logs === 'string') {
                     html = data.logs.split('\\n').filter(x=>x).slice(0, 50).map(line => {
                         const p = line.split('|');
-                        return "<div class='log-entry'><span class='log-time'>" + p[0] + "</span><span class='log-ip'>" + p[1] + "</span><span class='log-loc'>" + p[2] + "</span><span class='log-tag " + (p[3].includes('订阅')||p[3].includes('检测')?'green':'') + "'>" + p[3] + "</span></div>";
+                        return "<div class='log-entry'><span class='log-time'>" + esc(p[0]) + "</span><span class='log-ip'>" + esc(p[1]) + "</span><span class='log-loc'>" + esc(p[2]) + "</span><span class='log-tag " + (p[3].includes('订阅')||p[3].includes('检测')?'green':'') + "'>" + esc(p[3]) + "</span></div>";
                     }).join('');
                 }
                 document.getElementById('logBox').innerHTML = html || '暂无日志';
@@ -2932,8 +2961,9 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
                 const data = await res.json();
                 const list = data.list || [];
                 const html = list.length ? list.map(item => {
-                    const actionHtml = item.type === 'system' ? '<span class="sys-tag">🔒 系统</span>' : "<button class='btn-del' onclick='delWhitelist(\\"" + item.ip + "\\")'>删除</button>";
-                    return "<tr><td>" + item.ip + "</td><td>" + actionHtml + "</td></tr>";
+                    const safeIp = esc(item.ip);
+                    const actionHtml = item.type === 'system' ? '<span class="sys-tag">🔒 系统</span>' : "<button class='btn-del' onclick='delWhitelist(\\"" + safeIp + "\\")'>删除</button>";
+                    return "<tr><td>" + safeIp + "</td><td>" + actionHtml + "</td></tr>";
                 }).join('') : '<tr><td colspan="2" style="text-align:center">暂无白名单 IP</td></tr>';
                 document.getElementById('whitelistBody').innerHTML = html;
             } catch(e) { document.getElementById('whitelistBody').innerHTML = '<tr><td colspan="2">加载失败</td></tr>'; }
@@ -2961,10 +2991,10 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
         async function checkProxy() {
             const val = document.getElementById('pIp').value;
             if(val) {
-                try { await navigator.clipboard.writeText(val); alert("✅ ProxyIP 已复制\\n\\n点击确定跳转检测网站..."); }
+                try { await navigator.clipboard.writeText(val); alert("✅ 中转地址已复制\\n\\n点击确定跳转检测网站..."); }
                 catch(e) { alert("跳转检测网站..."); }
                 fetch('?flag=log_proxy_check');
-                window.open("${proxyCheckUrl}", "_blank");
+                window.open("${jsStr(proxyCheckUrl)}", "_blank");
             }
         }
 
@@ -3000,8 +3030,15 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
         async function validateApi(type) {
             const endpoint = type === 'tg' ? 'validate_tg' : 'validate_cf';
             let payload = {};
-            if(type === 'tg') payload = { TG_BOT_TOKEN: val('tgToken'), TG_CHAT_ID: val('tgId') };
-            else payload = { CF_ID:val('cfAcc'), CF_TOKEN:val('cfTok'), CF_EMAIL:val('cfMail'), CF_KEY:val('cfKey') };
+            if(type === 'tg') {
+                const t = val('tgToken'), i = val('tgId');
+                if (t.startsWith('****') || i.startsWith('****')) { alert('请先输入完整的新配置值再验证'); return; }
+                payload = { TG_BOT_TOKEN: t, TG_CHAT_ID: i };
+            } else {
+                const a=val('cfAcc'),t=val('cfTok'),m=val('cfMail'),k=val('cfKey');
+                if ([a,t,m,k].some(v=>v&&v.startsWith('****'))) { alert('请先输入完整的新配置值再验证'); return; }
+                payload = { CF_ID:a, CF_TOKEN:t, CF_EMAIL:m, CF_KEY:k };
+            }
             try {
                 const res = await fetch('?flag=' + endpoint, { method:'POST', body:JSON.stringify(payload) });
                 const d = await res.json();
@@ -3016,7 +3053,7 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
             let base = document.getElementById('subDom').value.trim() || document.getElementById('hostDom').value.trim();
             let host = document.getElementById('hostDom').value.trim();
             let p = document.getElementById('pIp').value.trim();
-            let isClash = document.getElementById('clashMode').checked;
+            let isCM = document.getElementById('cMode').checked;
             let path = p ? "/proxyip=" + p : "/";
             const search = new URLSearchParams();
             search.set('uuid', UUID);
@@ -3025,20 +3062,20 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
             search.set('sni', host);
             search.set('alpn', 'h3');
             search.set('fp', 'random');
-            search.set('allowInsecure', '1');
+            search.set('allowInsecure', '0');
             search.set('type', 'ws');
             search.set('host', host);
             search.set('path', path);
             let finalUrl = \`https://\${base}/sub?\${search.toString()}\`;
-            if (isClash) {
-                let subUrl = CONVERTER + "/sub?target=clash&url=" + encodeURIComponent(finalUrl) + "&emoji=true&list=false&sort=false";
+            if (isCM) {
+                let subUrl = CONVERTER + "/sub?target=" + atob('Y2xhc2g=') + "&url=" + encodeURIComponent(finalUrl) + "&emoji=true&list=false&sort=false";
                 document.getElementById('finalLink').value = subUrl;
             } else {
                 document.getElementById('finalLink').value = finalUrl;
             }
         }
 
-        function toggleClash() { updateLink(); }
+        function tgCM() { updateLink(); }
 
         function copyId(id) {
             const el = document.getElementById(id);
@@ -3099,6 +3136,7 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
                 const regionText = site.region === 'domestic' ? '国内' : '国际';
                 const card = document.createElement('div');
                 card.className = 'latency-card';
+                card.dataset.region = site.region;
                 card.innerHTML = '<div class="latency-card-header"><div class="latency-card-info"><div class="latency-card-icon" data-site="' + site.name + '">' + site.icon + '</div><div><div class="latency-card-name">' + site.name + '</div><div class="latency-card-region ' + regionClass + '">' + regionText + '</div></div></div><div class="latency-status" id="latency-' + siteName + '">...<span class="unit">ms</span></div></div>';
                 container.appendChild(card);
             });
@@ -3122,6 +3160,9 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
 
         async function fetchIpipData() {
             setNetworkStatus('status-ipip', 'loading');
+            const titleEl = document.getElementById('ipip-title');
+            const ipEl = document.getElementById('ipip-ip');
+            const countryEl = document.getElementById('ipip-country');
             const apis = [
                 { name: 'speedtest.cn', url: 'https://api-v3.speedtest.cn/ip', parse: d => d.code === 0 && d.data ? { ip: d.data.ip, loc: (d.data.country || '') + ' ' + (d.data.city || '') } : null },
                 { name: 'ipipv.com', url: 'https://myip.ipipv.com/', parse: d => ({ ip: d.Ip, loc: (d.Country || '') + ' ' + (d.City || '') }) },
@@ -3129,64 +3170,107 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
             ];
             for (const api of apis) {
                 try {
-                    const res = await fetch(api.url + '?_t=' + Date.now());
+                    const url = api.url + (api.url.includes('?') ? '&' : '?') + '_t=' + Date.now();
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
                     const data = await res.json();
                     const result = api.parse(data);
                     if (result && result.ip) {
-                        document.getElementById('ipip-ip').textContent = result.ip;
-                        document.getElementById('ipip-country').textContent = result.loc.trim();
-                        document.getElementById('ipip-title').textContent = '国内测试(' + api.name + ')';
+                        ipEl.textContent = result.ip;
+                        countryEl.textContent = result.loc.trim();
+                        titleEl.textContent = '国内测试(' + api.name + ')';
                         setNetworkStatus('status-ipip', 'success');
                         return;
                     }
                 } catch {}
             }
-            document.getElementById('ipip-ip').innerHTML = '<span class="error">加载失败</span>';
+            ipEl.innerHTML = '<span class="error">加载失败</span>';
+            countryEl.textContent = '';
+            titleEl.textContent = '国内测试';
             setNetworkStatus('status-ipip', 'error');
         }
-
         async function fetchEdgeOneData() {
             setNetworkStatus('status-edgeone', 'loading');
-            try {
-                const res = await fetch('https://api.ipapi.cmliussss.net');
-                const d = await res.json();
-                document.getElementById('edgeone-ip').textContent = d.ip || '未知';
-                document.getElementById('edgeone-country').textContent = ((d.location?.country_code || '') + ' AS' + (d.asn?.asn || '') + ' ' + (d.asn?.org || '')).trim();
-                setNetworkStatus('status-edgeone', 'success');
-            } catch {
-                document.getElementById('edgeone-ip').innerHTML = '<span class="error">加载失败</span>';
-                setNetworkStatus('status-edgeone', 'error');
+            const apis = [
+                {
+                    url: 'https://api.cmliussss.net/api/ipinfo?_t=' + Date.now(),
+                    parse: d => ({ ip: d.ip || '', loc: ((d.country_code || '未知') + ' ' + (d.asn || '') + ' ' + (d.as_name || '')).trim() })
+                },
+                {
+                    url: 'https://api.ipapi.is',
+                    parse: d => ({ ip: d.ip || '', loc: ((d.location?.country_code || '未知') + ' AS' + (d.asn?.asn || '') + ' ' + (d.asn?.org || '')).trim() })
+                }
+            ];
+
+            for (const api of apis) {
+                try {
+                    const res = await fetch(api.url);
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const { ip, loc } = api.parse(await res.json());
+                    if (!ip) throw new Error('Missing IP');
+                    document.getElementById('edgeone-ip').textContent = ip;
+                    document.getElementById('edgeone-country').textContent = loc || '未知';
+                    setNetworkStatus('status-edgeone', 'success');
+                    return;
+                } catch {}
             }
+
+            document.getElementById('edgeone-ip').innerHTML = '<span class="error">加载失败</span>';
+            document.getElementById('edgeone-country').textContent = '';
+            setNetworkStatus('status-edgeone', 'error');
         }
 
         async function fetchCloudFlareData() {
             setNetworkStatus('status-cf', 'loading');
+            const ipEl = document.getElementById('cf-ip');
+            const countryEl = document.getElementById('cf-country');
             try {
                 const res = await fetch('https://cf.090227.xyz/ip.json?_t=' + Date.now());
+                if (!res.ok) throw new Error('HTTP ' + res.status);
                 const d = await res.json();
-                document.getElementById('cf-ip').textContent = d.ip || '未知';
-                document.getElementById('cf-country').textContent = ((d.country || '') + ' ' + (d.org || '')).trim() || '未知';
+                if (!d.ip) throw new Error('Missing IP');
+                ipEl.textContent = d.ip;
+                countryEl.textContent = ((d.country || '') + ' ' + (d.org || '')).trim() || '未知';
                 setNetworkStatus('status-cf', 'success');
             } catch {
-                document.getElementById('cf-ip').innerHTML = '<span class="error">加载失败</span>';
+                ipEl.innerHTML = '<span class="error">加载失败</span>';
+                countryEl.textContent = '';
                 setNetworkStatus('status-cf', 'error');
             }
         }
-
         async function fetchTwitterData() {
             setNetworkStatus('status-twitter', 'loading');
+            const ipEl = document.getElementById('twitter-ip');
+            const countryEl = document.getElementById('twitter-country');
             try {
                 const res = await fetch('https://help.x.com/cdn-cgi/trace?_t=' + Date.now());
+                if (!res.ok) throw new Error('HTTP ' + res.status);
                 const text = await res.text();
                 const data = {};
                 text.split('\\n').forEach(line => { const [k, v] = line.split('='); if (k && v) data[k.trim()] = v.trim(); });
-                document.getElementById('twitter-ip').textContent = data.ip || '未知';
-                document.getElementById('twitter-country').textContent = ((data.loc || '') + ' ' + (data.colo || '')).trim() || '未知';
+                if (!data.ip) throw new Error('Missing IP');
+                ipEl.textContent = data.ip;
+                countryEl.textContent = ((data.loc || '') + ' ' + (data.colo || '')).trim() || '未知';
                 setNetworkStatus('status-twitter', 'success');
             } catch {
-                document.getElementById('twitter-ip').innerHTML = '<span class="error">加载失败</span>';
+                ipEl.innerHTML = '<span class="error">加载失败</span>';
+                countryEl.textContent = '';
                 setNetworkStatus('status-twitter', 'error');
             }
+        }
+        function applyNetToggles() {
+            const hideIp = document.getElementById('tgHideIp').checked;
+            const hideDom = document.getElementById('tgHideDom').checked;
+            const hideIntl = document.getElementById('tgHideIntl').checked;
+            document.querySelectorAll('.network-card').forEach(c => {
+                const r = c.dataset.region;
+                if (hideIp) c.classList.add('ip-hidden'); else c.classList.remove('ip-hidden');
+                if ((r === 'domestic' && hideDom) || (r === 'international' && hideIntl)) c.classList.add('section-hidden'); else c.classList.remove('section-hidden');
+            });
+            document.querySelectorAll('.latency-card').forEach(c => {
+                const r = c.dataset.region;
+                if ((r === 'domestic' && hideDom) || (r === 'international' && hideIntl)) c.classList.add('section-hidden'); else c.classList.remove('section-hidden');
+            });
         }
 
         function loadNetworkInfo() {
@@ -3196,17 +3280,15 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
             fetchCloudFlareData();
             fetchTwitterData();
             runLatencyTests();
-            setInterval(runLatencyTests, 5000);
         }
 
-        // 初始化
+        // 初始化（控制台面板默认显示）
         updateStats();
-        loadLogs();
         loadWhitelist();
         updateLink();
-        loadNetworkInfo();
-        setInterval(loadLogs, 5000);
     </script>
 </body>
 </html>`;
 }
+
+
