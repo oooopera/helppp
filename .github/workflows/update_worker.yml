@@ -1,0 +1,47 @@
+name: Sync _worker.js from Remote
+
+on:
+  # 允许手动触发
+  workflow_dispatch:
+  # 设置定时任务（可选，例如每天凌晨 0 点同步一次）
+  schedule:
+    - cron: '0 0 * * *'
+  # 如果需要，也可以设置为当本仓库 push 时触发
+  # push:
+  #   branches: [ main ]
+
+jobs:
+  update-file:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # 赋予写入权限以允许提交更改
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download _worker.js from source
+        run: |
+          # 使用 curl 获取远程仓库的原始文件
+          # 注意：URL 格式为 raw.githubusercontent.com/[用户名]/[仓库名]/[分支名]/[文件路径]
+          curl -o _worker.js https://raw.githubusercontent.com/xtgm/stallTCP1.32V2/main/_worker.js
+          
+          # 检查文件是否下载成功且不为空
+          if [ ! -s _worker.js ]; then
+            echo "Error: Downloaded file is empty or download failed."
+            exit 1
+          fi
+
+      - name: Commit and Push changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          # 检查文件是否有变化
+          if git diff --quiet _worker.js; then
+            echo "No changes detected in _worker.js"
+          else
+            git add _worker.js
+            git commit -m "chore: sync _worker.js from xtgm/stallTCP1.32V2"
+            git push
+          fi
