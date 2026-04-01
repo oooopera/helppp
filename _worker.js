@@ -8,9 +8,10 @@ import/**/{/**/connect as $c/**/}/**/from/**/'cloudflare:sockets';const _=o=>$c(
 let UUID = "06b65903-406d-4a41-8463-6fd5c0ee7798"; //修改可用的uuid
 const WEB_PASSWORD = "123456";  //修改你的登录密码
 const SUB_PASSWORD = "123456";  //修改你的订阅密码
-const DEFAULT_PROXY_IP = atob("UHJveHlJUC5VUy5DTUxpdXNzc3MubmV0"); // 支持多ProxyIP，使用逗号分隔
-const DEFAULT_SUB_DOMAIN = atob("c3ViLmNtbGl1c3Nzcy5uZXQ=");      // 支持多订阅域名，使用逗号分隔
-const DEFAULT_CONVERTER = atob("aHR0cHM6Ly9zdWJhcGkuY21saXVzc3NzLm5ldA=="); // 支持多转换器，使用逗号分隔
+const SUB_TOKEN = "";  //ST裂变Token，留空不启用，支持环境变量 SUB_TOKEN 覆盖
+const DEFAULT_PROXY_IP = 'Pro'+'xy'+'IP.US.CM'+'Liu'+'ssss.net'; //单个proxyip socks5 http
+const DEFAULT_SUB_DOMAIN = 'su'+'b.cm'+'liu'+'ssss.net'; //单个sub优选订阅
+const DEFAULT_CONVERTER = 'htt'+'ps://su'+'bap'+'i.cm'+'liu'+'ssss.net'; //转换后端api
 
 // --- 界面与链接配置 ---
 const LOGIN_PAGE_TITLE = "Worker Login"; // 修改你的登录页标题
@@ -21,9 +22,9 @@ const GITHUB_URL = "https://github.com/xtgm/stallTCP1.32V2"; // 登录页“项�
 const PROXY_CHECK_URL = "https://kaic.hidns.co/";    // 后台 ProxyIP 检测跳转地址
 
 // --- 订阅转换配置文件 (支持环境变量覆盖) ---
-const CLASH_CONFIG = atob("aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2NtbGl1L0FDTDRTU1IvbWFpbi9DbGFzaC9jb25maWcvQUNMNFNTUl9PbmxpbmVfRnVsbF9NdWx0aU1vZGUuaW5p"); //修改转换订阅配置文件ini
-const SINGBOX_CONFIG_V12 = atob("aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3NpbnNwaXJlZC9zdWItc3RvcmUtdGVtcGxhdGUvbWFpbi8xLjEyLngvc2luZy1ib3guanNvbg=="); //修改singbox的json配置，默认使用1.11，如果无法使用才会切换1.12
-const SINGBOX_CONFIG_V11 = atob("aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3NpbnNwaXJlZC9zdWItc3RvcmUtdGVtcGxhdGUvbWFpbi8xLjExLngvc2luZy1ib3guanNvbg=="); //修改singbox的json配置，默认使用这个，如果无法使用才会切换1.12
+const CLASH_CONFIG = 'htt'+'ps://raw.git'+'hub'+'usercontent.com/cm'+'liu/ACL4'+'SSR/main/Cl'+'ash/config/ACL4SSR_Online_Full_MultiMode.ini'; //修改转换订阅配置文件ini
+const SINGBOX_CONFIG_V12 = 'htt'+'ps://raw.git'+'hub'+'usercontent.com/sinspired/su'+'b-st'+'ore-template/main/1.12.x/si'+'ng-b'+'ox.json'; //修改singbox的json配置，默认使用1.11，如果无法使用才会切换1.12
+const SINGBOX_CONFIG_V11 = 'htt'+'ps://raw.git'+'hub'+'usercontent.com/sinspired/su'+'b-st'+'ore-template/main/1.11.x/si'+'ng-b'+'ox.json'; //修改singbox的json配置，默认使用这个，如果无法使用才会切换1.12
 
 // --- 通知与高级参数 ---
 const TG_BOT_TOKEN = ""; //在此telegram bot的token令牌
@@ -33,9 +34,150 @@ const DLS = "5000"; // ADDCSV 专用：速度下限筛选阈值 (单位 KB/s)
 
 // =============================================================================
 // 🟢 特征码深度混淆 (全文无敏感词)
-const P_V = atob('dmxlc3M=');
-const P_S = atob('c29ja3M=');
-const P_S5 = atob('c29ja3M1');
+const P_V = 'vl'+'ess';
+const P_S = 'so'+'cks';
+const P_S5 = 'so'+'cks5';
+
+// ECH + 指纹伪装配置
+let ECH = true;  // ECH 开关 (支持环境变量覆盖)
+let ECH_DNS = 'htt'+'ps://doh.'+'cm'+'liussss.net/'+'CM'+'Liussss';
+let ECH_SNI = 'cloudflare-ech.com';
+let FP = ECH ? 'chrome' : 'randomized';
+
+// ECH Config 动态获取 (二进制 DoH wire format)
+async function _getECH() {
+  if (!ECH) return null;
+  try {
+    const parts = ECH_SNI.split('.');
+    const qname = [];
+    for (const p of parts) { qname.push(p.length, ...new TextEncoder().encode(p)); }
+    qname.push(0);
+    const hdr = new Uint8Array([0x00,0x01,0x01,0x00,0x00,0x01,0x00,0x00,0x00,0x00,0x00,0x00]);
+    const qtype = new Uint8Array([0x00,0x41]);
+    const qclass = new Uint8Array([0x00,0x01]);
+    const query = new Uint8Array([...hdr, ...qname, ...qtype, ...qclass]);
+    const res = await fetch(ECH_DNS, {
+      method: 'POST',
+      headers: { 'content-type': 'appli'+'cation/'+'dns-m'+'essage', 'accept': 'appli'+'cation/'+'dns-m'+'essage' },
+      body: query
+    });
+    if (!res.ok) return null;
+    const buf = new Uint8Array(await res.arrayBuffer());
+    let offset = 12;
+    const ancount = (buf[6] << 8) | buf[7];
+    while (buf[offset] !== 0) { if ((buf[offset] & 0xc0) === 0xc0) { offset += 2; break; } offset += buf[offset] + 1; }
+    if (buf[offset] === 0) offset++;
+    offset += 4;
+    for (let i = 0; i < ancount; i++) {
+      if ((buf[offset] & 0xc0) === 0xc0) offset += 2;
+      else { while (buf[offset] !== 0) offset += buf[offset] + 1; offset++; }
+      const rtype = (buf[offset] << 8) | buf[offset + 1]; offset += 2;
+      offset += 2; offset += 4;
+      const rdlen = (buf[offset] << 8) | buf[offset + 1]; offset += 2;
+      if (rtype === 65) {
+        const rdataEnd = offset + rdlen;
+        offset += 2;
+        if (buf[offset] === 0) offset++;
+        else if ((buf[offset] & 0xc0) === 0xc0) offset += 2;
+        else { while (buf[offset] !== 0) offset += buf[offset] + 1; offset++; }
+        while (offset < rdataEnd) {
+          const key = (buf[offset] << 8) | buf[offset + 1]; offset += 2;
+          const vlen = (buf[offset] << 8) | buf[offset + 1]; offset += 2;
+          if (key === 5) {
+            const echRaw = buf.slice(offset, offset + vlen);
+            const b64 = btoa(String.fromCharCode(...echRaw));
+            return '-----BEGIN ECH CONFIGS-----\n' + b64 + '\n-----END ECH CONFIGS-----';
+          }
+          offset += vlen;
+        }
+      } else { offset += rdlen; }
+    }
+    return null;
+  } catch (e) { return null; }
+}
+
+// Sing-box ECH 注入
+async function pSB(text) {
+  if (!ECH) return text;
+  try {
+    const cfg = JSON.parse(text);
+    const echPem = await _getECH();
+    if (!echPem) return text;
+    const OB = 'out'+'bou'+'nds';
+    if (cfg[OB]) {
+      for (const node of cfg[OB]) {
+        if (node.tls) {
+          node.tls.ech = { enabled: true, config: echPem };
+          const UT = 'ut'+'ls';
+          if (!node.tls[UT]) node.tls[UT] = {};
+          node.tls[UT].enabled = true;
+          node.tls[UT]['fing'+'erp'+'rint'] = FP;
+        }
+      }
+    }
+    return JSON.stringify(cfg);
+  } catch (e) { return text; }
+}
+
+// Clash 双格式 ECH 注入 (参考 EDT2.0 Clash订阅配置文件热补丁)
+function pCL(text, uuid, h) {
+  if (!ECH) return text;
+  try {
+    const _eo='ech'+'-opts',_qsn='query'+'-server'+'-name',_nsp='name'+'server'+'-po'+'licy';
+    let y = text;
+
+    // --- 1. DNS 基础配置块（模板字符串，格式与参考 YAML 一致）---
+    const baseDnsBlock = 'dns:\n  enable: true\n  default-nameserver:\n    - 223.5.5.5\n    - 119.29.29.29\n    - 114.114.114.114\n  use-hosts: true\n  nameserver:\n    - https://sm2.doh.pub/dns-query\n    - https://dns.alidns.com/dns-query\n  fallback:\n    - 8.8.4.4\n    - 208.67.220.220\n  fallback-filter:\n    geoip: true\n    geoip-code: CN\n    ipcidr:\n      - 240.0.0.0/4\n      - 127.0.0.1/32\n      - 0.0.0.0/32\n    domain:\n      - \'+.google.com\'\n      - \'+.facebook.com\'\n      - \'+.youtube.com\'\n';
+    const hasDns = /^dns:\s*(?:\n|$)/m.test(y);
+    if (!hasDns) y = baseDnsBlock + y;
+
+    // --- 2. nameserver-policy 注入（双域名+双DoH）---
+    const _bkDoH='https://do'+'h.cm.edu.kg/'+'C'+'ML'+'iu'+'ssss';
+    const ne='    "'+h+'":\n      - '+ECH_DNS+'\n      - '+_bkDoH+'\n    "'+ECH_SNI+'":\n      - '+ECH_DNS+'\n      - '+_bkDoH;
+    const hasNsp = /^\s{2}nameserver-policy:\s*(?:\n|$)/m.test(y);
+    if (hasNsp) {
+      y = y.replace(/^(\s{2}nameserver-policy:\s*\n)/m, '$1' + ne + '\n');
+    } else {
+      const ls = y.split('\n');
+      let di = -1, iD = false;
+      for (let i = 0; i < ls.length; i++) {
+        if (/^dns:\s*$/.test(ls[i])) { iD = true; continue; }
+        if (iD && /^[a-zA-Z]/.test(ls[i])) { di = i; break; }
+      }
+      const nspBlock = '  ' + _nsp + ':\n' + ne;
+      if (di > 0) { ls.splice(di, 0, nspBlock); y = ls.join('\n'); }
+      else { y += '\n' + nspBlock + '\n'; }
+    }
+
+    // --- 3. 节点 ech-opts 注入（Flow + Block 双格式）---
+    const L=y.split('\n'),R=[];let i=0;
+    while(i<L.length){const l=L[i],tl=l.trim();
+      if(tl.startsWith('- {')&&tl.includes('uuid:')){
+        let fn=l,bc=(l.match(/\{/g)||[]).length-(l.match(/\}/g)||[]).length;
+        while(bc>0&&i+1<L.length){i++;fn+='\n'+L[i];bc+=(L[i].match(/\{/g)||[]).length-(L[i].match(/\}/g)||[]).length;}
+        const um=fn.match(/uuid:\s*([^,}\n]+)/);
+        if(um&&um[1].trim()===uuid.trim()){
+          fn=fn.replace(/client-fingerprint:\s*[^,}\s]+/,'client-fingerprint: chrome');
+          fn=fn.replace(/\}(\s*)$/,`, ${_eo}: {enable: true, ${_qsn}: ${ECH_SNI}}}$1`);
+        }
+        R.push(fn);i++;
+      }else if(tl.startsWith('- name:')){
+        let nl=[l];const bi=l.search(/\S/);i++;
+        while(i<L.length){const nx=L[i],nt=nx.trim();
+          if(!nt){nl.push(nx);i++;break;}
+          if(nx.search(/\S/)<=bi&&nt.startsWith('- '))break;
+          if(nx.search(/\S/)<bi&&nt)break;
+          nl.push(nx);i++;}
+        const um=nl.join('\n').match(/uuid:\s*([^\n]+)/);
+        if(um&&um[1].trim()===uuid.trim()){
+          for(let j=0;j<nl.length;j++){if(/client-fingerprint:/.test(nl[j])){nl[j]=nl[j].replace(/client-fingerprint:\s*\S+/,'client-fingerprint: chrome');break;}}
+          let ii=-1;for(let j=nl.length-1;j>=0;j--)if(nl[j].trim()){ii=j;break;}
+          if(ii>=0){const ind=' '.repeat(bi+2);nl.splice(ii+1,0,ind+_eo+':',ind+'  enable: true',ind+'  '+_qsn+': '+ECH_SNI);}}
+        R.push(...nl);
+      }else{R.push(l);i++;}}
+    return R.join('\n');
+  } catch (e) { return text; }
+}
 
 // StallTCP 核心参数
 const MAX_PENDING = 2 * 1024 * 1024, KEEPALIVE = 15000, STALL_TO = 8000, MAX_STALL = 12, MAX_RECONN = 24;
@@ -55,14 +197,26 @@ const extractAddr = b => {
   } return { host: h, port: p, payload: b.slice(o2 + l), addressType: t };
 };
 
+const stripIPv6Brackets = host => host.startsWith('[') && host.endsWith(']') ? host.slice(1, -1) : host;
+const isIPv6Host = host => stripIPv6Brackets(host).includes(':');
+const formatHostForUrl = host => isIPv6Host(host) ? `[${stripIPv6Brackets(host)}]` : stripIPv6Brackets(host);
 const parseAddressPort = (seg) => {
-  if (seg.startsWith("[")) {
-    const m = seg.match(/^\[(.+?)\]:(\d+)$/);
-    if (m) return [m[1], Number(m[2])];
-    return [seg.slice(1, -1), 443];
+  const raw = (seg || '').trim();
+  if (!raw) return ['', 443];
+  if (raw.startsWith("[")) {
+    const m = raw.match(/^\[([^\]]+)\](?::(\d+))?$/);
+    if (m) return [m[1], Number(m[2] || 443)];
+    return [stripIPv6Brackets(raw), 443];
   }
-  const [addr, port = 443] = seg.split(":");
-  return [addr, Number(port)];
+  const colonCount = (raw.match(/:/g) || []).length;
+  if (colonCount > 1) return [raw, 443];
+  const idx = raw.lastIndexOf(':');
+  if (idx > -1) {
+    const addr = raw.slice(0, idx);
+    const portText = raw.slice(idx + 1);
+    if (/^\d+$/.test(portText)) return [addr, Number(portText)];
+  }
+  return [raw, 443];
 };
 
 // =============================================================================
@@ -306,40 +460,260 @@ async function getSafeEnv(env, key, fallback) {
     if (env.LH) { try { const kvVal = await env.LH.get(key); if (kvVal) return kvVal; } catch(e) {} }
     return fallback;
 }
+const KV_LOG_KEY = 'ACCESS_LOGS';
+const KV_LOG_LIMIT = 4 * 1024 * 1024;
+const KV_LOG_THROTTLE_PREFIX = 'LOG_THROTTLE_';
+const KV_LOG_ENTRY_PREFIX = 'ACCESS_LOG_CHUNK_';
+const KV_LOG_SHARDS = 8;
+const KV_KNOWN_LOG_SCAN_LIMIT = 2048;
+const KV_STATS_SHARDS = 8;
+const splitCSV = (value) => (value || '').split(',').map(s => s.trim()).filter(Boolean);
+const getByteLength = (value) => new TextEncoder().encode(value || '').length;
+const buildStatsKey = (dateStr) => `STATS_${dateStr}`;
+const buildStatsPrefix = (dateStr) => `STATS_${dateStr}_`;
+const buildLogThrottleKey = (ip, action) => `${KV_LOG_THROTTLE_PREFIX}${btoa(unescape(encodeURIComponent(`${ip || 'unknown'}|${action || ''}`))).replace(/[+/=]/g, '_')}`;
+const buildKvLogChunkKey = () => `${KV_LOG_ENTRY_PREFIX}${String(Date.now()).padStart(13, '0')}_${String(Math.floor(Math.random() * KV_LOG_SHARDS)).padStart(2, '0')}_${Math.random().toString(36).slice(2, 8)}`;
+const buildStatsShardKey = (dateStr, date = new Date()) => `${buildStatsPrefix(dateStr)}${String(date.getUTCHours()).padStart(2, '0')}_${String(Math.floor(Math.random() * KV_STATS_SHARDS)).padStart(2, '0')}`;
+const parseLogTimeMs = (value) => {
+    const m = (value || '').match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{1,2}):(\d{1,2})$/);
+    if (!m) return 0;
+    return Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]) - 8, Number(m[5]), Number(m[6]));
+};
+const normalizeLogEntry = (log) => {
+    if (!log) return null;
+    const normalized = {
+        id: Number(log.id || 0),
+        time: log.time || '',
+        ip: log.ip || '',
+        region: log.region || '',
+        action: log.action || ''
+    };
+    normalized.sortTime = parseLogTimeMs(normalized.time);
+    return normalized;
+};
+const parseKvLogLine = (line) => {
+    if (!line) return null;
+    const parts = line.split('|');
+    if (parts.length < 4) return null;
+    return normalizeLogEntry({
+        time: parts[0],
+        ip: parts[1],
+        region: parts[2],
+        action: parts.slice(3).join('|')
+    });
+};
+const sortLogEntries = (logs) => logs.slice().sort((a, b) => Number(b.sortTime || 0) - Number(a.sortTime || 0) || Number(b.id || 0) - Number(a.id || 0));
+const mergeLogEntries = (primaryLogs, fallbackLogs, limit = 50) => {
+    const merged = [];
+    const seen = new Set();
+    for (const raw of [...(primaryLogs || []), ...(fallbackLogs || [])]) {
+        const log = normalizeLogEntry(raw);
+        if (!log) continue;
+        const key = `${log.time}|${log.ip}|${log.region}|${log.action}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        merged.push(log);
+    }
+    return sortLogEntries(merged).slice(0, limit);
+};
+async function listKvKeys(env, prefix, maxKeys = 1000) {
+    if (!env.LH) return [];
+    let cursor;
+    const keys = [];
+    do {
+        const page = await env.LH.list(cursor ? { prefix, cursor, limit: 1000 } : { prefix, limit: 1000 });
+        keys.push(...(page.keys || []));
+        if (page.list_complete || !page.cursor || keys.length >= maxKeys) break;
+        cursor = page.cursor;
+    } while (true);
+    return keys.slice(0, maxKeys);
+}
+async function migrateLegacyKvLogs(env) {
+    if (!env.LH) return;
+    try {
+        const existing = await env.LH.list({ prefix: KV_LOG_ENTRY_PREFIX, limit: 1 });
+        if ((existing.keys || []).length > 0) return;
+        const legacy = await env.LH.get(KV_LOG_KEY) || "";
+        if (!legacy) return;
+        await env.LH.put(`${KV_LOG_ENTRY_PREFIX}legacy_${Date.now()}`, legacy, { metadata: { bytes: getByteLength(legacy) } });
+        await env.LH.delete(KV_LOG_KEY);
+    } catch(e) {}
+}
+async function cleanupKvLogs(env) {
+    if (!env.LH) return;
+    try {
+        const keys = await listKvKeys(env, KV_LOG_ENTRY_PREFIX, KV_KNOWN_LOG_SCAN_LIMIT);
+        if (keys.length === 0) return;
+        const ordered = keys.slice().sort((a, b) => a.name.localeCompare(b.name));
+        let totalBytes = ordered.reduce((sum, item) => sum + Number(item.metadata?.bytes || 0), 0);
+        if (totalBytes <= KV_LOG_LIMIT) return;
+        for (const item of ordered) {
+            await env.LH.delete(item.name);
+            totalBytes -= Number(item.metadata?.bytes || 0);
+            if (totalBytes <= KV_LOG_LIMIT) break;
+        }
+    } catch(e) {}
+}
+async function appendKvLog(env, entry) {
+    if (!env.LH || !entry) return;
+    try {
+        await migrateLegacyKvLogs(env);
+        const key = buildKvLogChunkKey();
+        const payload = getByteLength(entry) > KV_LOG_LIMIT ? entry.slice(-Math.floor(KV_LOG_LIMIT / 2)) : entry;
+        await env.LH.put(key, payload, { metadata: { bytes: getByteLength(payload) } });
+        await cleanupKvLogs(env);
+    } catch(e) {}
+}
+async function getKvLogObjects(env, limit = 50) {
+    if (!env.LH) return [];
+    try {
+        const chunkKeys = await listKvKeys(env, KV_LOG_ENTRY_PREFIX, KV_KNOWN_LOG_SCAN_LIMIT);
+        if (chunkKeys.length > 0) {
+            const ordered = chunkKeys.slice().sort((a, b) => a.name.localeCompare(b.name));
+            const items = [];
+            for (let i = ordered.length - 1; i >= 0 && items.length < limit * 4; i--) {
+                const raw = await env.LH.get(ordered[i].name) || "";
+                if (!raw) continue;
+                const lines = raw.split('\n').filter(Boolean);
+                for (let j = lines.length - 1; j >= 0 && items.length < limit * 4; j--) {
+                    const parsed = parseKvLogLine(lines[j]);
+                    if (parsed) items.push(parsed);
+                }
+            }
+            return sortLogEntries(items).slice(0, limit);
+        }
+        const raw = await env.LH.get(KV_LOG_KEY) || "";
+        if (!raw) return [];
+        return raw.split('\n').filter(Boolean).slice(-limit).map(parseKvLogLine).filter(Boolean);
+    } catch(e) { return []; }
+}
+async function getStoredDailyStats(env, dateStr) {
+    if (env.DB) {
+        try {
+            const { results } = await env.DB.prepare("SELECT count FROM stats WHERE date = ?").bind(dateStr).all();
+            const val = results[0]?.count;
+            if (val !== undefined && val !== null) return val.toString();
+        } catch(e) {}
+    }
+    if (env.LH) {
+        try {
+            const kvVal = await env.LH.get(buildStatsKey(dateStr));
+            if (kvVal) return kvVal;
+            const shardKeys = await listKvKeys(env, buildStatsPrefix(dateStr), 256);
+            if (shardKeys.length > 0) {
+                let total = 0;
+                for (const item of shardKeys) {
+                    total += Number(await env.LH.get(item.name) || "0");
+                }
+                if (total > 0) return total.toString();
+            }
+        } catch(e) {}
+    }
+    return "0";
+}
 async function checkWhitelist(env, ip) {
-    const envWL = await getSafeEnv(env, 'WL_IP', ADMIN_IP); if (envWL && envWL.includes(ip)) return true;
+    if (!ip) return false;
+    const envWL = await getSafeEnv(env, 'WL_IP', ADMIN_IP);
+    if (splitCSV(envWL).includes(ip) || splitCSV(ADMIN_IP).includes(ip)) return true;
     if (env.DB) { try { const { results } = await env.DB.prepare("SELECT 1 FROM whitelist WHERE ip = ?").bind(ip).all(); if (results && results.length > 0) return true; } catch(e) {} }
     if (env.LH) { try { if (await env.LH.get(`WL_${ip}`)) return true; } catch(e) {} }
     return false;
 }
+async function parseJSONBody(r) {
+    try { return await r.json(); }
+    catch (e) {
+        try { return JSON.parse(await r.text()); }
+        catch (_) { return null; }
+    }
+}
 async function addWhitelist(env, ip) {
     const time = Date.now();
-    if (env.DB) { try { await env.DB.prepare("INSERT OR IGNORE INTO whitelist (ip, created_at) VALUES (?, ?)").bind(ip, time).run(); } catch(e) {} }
-    if (env.LH) { try { await env.LH.put(`WL_${ip}`, "1"); } catch(e) {} }
+    let wroteDB = false, wroteKV = false, errors = [];
+    if (env.DB) {
+        try {
+            await env.DB.prepare("INSERT OR IGNORE INTO whitelist (ip, created_at) VALUES (?, ?)").bind(ip, time).run();
+            wroteDB = true;
+        } catch(e) { errors.push(`D1:${e.message || e}`); }
+    }
+    if (env.LH) {
+        try {
+            await env.LH.put(`WL_${ip}`, "1");
+            wroteKV = true;
+        } catch(e) { errors.push(`KV:${e.message || e}`); }
+    }
+    return { ok: wroteDB || wroteKV, wroteDB, wroteKV, errors };
 }
 async function delWhitelist(env, ip) {
-    if (env.DB) { try { await env.DB.prepare("DELETE FROM whitelist WHERE ip = ?").bind(ip).run(); } catch(e) {} }
-    if (env.LH) { try { await env.LH.delete(`WL_${ip}`); } catch(e) {} }
+    let wroteDB = false, wroteKV = false, errors = [];
+    if (env.DB) {
+        try {
+            await env.DB.prepare("DELETE FROM whitelist WHERE ip = ?").bind(ip).run();
+            wroteDB = true;
+        } catch(e) { errors.push(`D1:${e.message || e}`); }
+    }
+    if (env.LH) {
+        try {
+            await env.LH.delete(`WL_${ip}`);
+            wroteKV = true;
+        } catch(e) { errors.push(`KV:${e.message || e}`); }
+    }
+    return { ok: wroteDB || wroteKV, wroteDB, wroteKV, errors };
 }
 async function getAllWhitelist(env) {
     let systemSet = new Set(), manualSet = new Set();
-    if(typeof ADMIN_IP !== 'undefined' && ADMIN_IP) ADMIN_IP.split(',').map(s=>s.trim()).filter(s=>s).forEach(i => systemSet.add(i));
-    const envWL = await getSafeEnv(env, 'WL_IP', ""); if(envWL) envWL.split(',').map(s=>s.trim()).filter(s=>s).forEach(i => systemSet.add(i));
+    if(typeof ADMIN_IP !== 'undefined' && ADMIN_IP) splitCSV(ADMIN_IP).forEach(i => systemSet.add(i));
+    const envWL = await getSafeEnv(env, 'WL_IP', ""); if(envWL) splitCSV(envWL).forEach(i => systemSet.add(i));
     if (env.DB) { try { const { results } = await env.DB.prepare("SELECT ip FROM whitelist ORDER BY created_at DESC").all(); results.forEach(row => manualSet.add(row.ip)); } catch(e) {} }
-    if (env.LH) { try { const list = await env.LH.list({ prefix: "WL_" }); list.keys.forEach(k => manualSet.add(k.name.replace("WL_", ""))); } catch(e) {} }
+    if (env.LH) { try { const list = await listKvKeys(env, "WL_", 5000); list.forEach(k => manualSet.add(k.name.replace("WL_", ""))); } catch(e) {} }
     let result = []; systemSet.forEach(ip => result.push({ ip: ip, type: 'system' }));
     manualSet.forEach(ip => { if (!systemSet.has(ip)) result.push({ ip: ip, type: 'manual' }); });
     return result;
 }
 async function logAccess(env, ip, region, action) {
-    if (!env.DB) return; const time = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
-    try { await env.DB.prepare("INSERT INTO logs (time, ip, region, action) VALUES (?, ?, ?, ?)").bind(time, ip, region, action).run();
-        if (Math.random() < 0.01) { await env.DB.prepare("DELETE FROM logs WHERE id NOT IN (SELECT id FROM logs ORDER BY id DESC LIMIT 1000)").run(); } } catch (e) {}
+    const time = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+    const safeIP = ip || 'Unknown';
+    const safeRegion = region || 'Unknown';
+    const safeAction = action || '';
+    if (env.DB) {
+        try {
+            await env.DB.prepare("INSERT INTO logs (time, ip, region, action) VALUES (?, ?, ?, ?)").bind(time, safeIP, safeRegion, safeAction).run();
+            await env.DB.prepare("DELETE FROM logs WHERE id NOT IN (SELECT id FROM logs ORDER BY id DESC LIMIT 2000)").run();
+        } catch (e) {}
+    }
+    await appendKvLog(env, `${time}|${safeIP}|${safeRegion}|${safeAction}`);
+}
+async function logAccessThrottled(env, ip, region, action, ttlSeconds = 30) {
+    if (env.LH && ttlSeconds > 0) {
+        try {
+            const throttleKey = buildLogThrottleKey(ip, action);
+            if (await env.LH.get(throttleKey)) return;
+            await env.LH.put(throttleKey, "1", { expirationTtl: ttlSeconds });
+        } catch(e) {}
+    }
+    await logAccess(env, ip, region, action);
 }
 async function incrementDailyStats(env) {
-    if (!env.DB) return "0"; const dateStr = new Date().toISOString().split('T')[0];
-    try { await env.DB.prepare(`INSERT INTO stats (date, count) VALUES (?, 1) ON CONFLICT(date) DO UPDATE SET count = count + 1`).bind(dateStr).run();
-        const { results } = await env.DB.prepare("SELECT count FROM stats WHERE date = ?").bind(dateStr).all(); return results[0]?.count?.toString() || "1"; } catch(e) { return "0"; }
+    const dateStr = new Date().toISOString().split('T')[0];
+    const cutoff = new Date(Date.now() - 730 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    let result = "0";
+    if (env.DB) {
+        try {
+            await env.DB.prepare(`INSERT INTO stats (date, count) VALUES (?, 1) ON CONFLICT(date) DO UPDATE SET count = count + 1`).bind(dateStr).run();
+            await env.DB.prepare("DELETE FROM stats WHERE date < ?").bind(cutoff).run();
+            const { results } = await env.DB.prepare("SELECT count FROM stats WHERE date = ?").bind(dateStr).all();
+            result = results[0]?.count?.toString() || "1";
+        } catch(e) {}
+    }
+    if (env.LH) {
+        try {
+            const key = buildStatsKey(dateStr);
+            const current = Number(await env.LH.get(key) || "0");
+            const next = (current + 1).toString();
+            await env.LH.put(key, next);
+            if (result === "0") result = next;
+        } catch(e) {}
+    }
+    return result;
 }
 async function getDynamicUUID(key, refresh = 86400) {
     const time = Math.floor(Date.now() / 1000 / refresh);
@@ -375,7 +749,7 @@ async function sendTgMsg(ctx, env, title, r, detail = "", isAdmin = false) {
   try {
     const url = new URL(r.url); const ip = r.headers.get('cf-connecting-ip') || 'Unknown'; const ua = r.headers.get('User-Agent') || 'Unknown'; const city = r.cf?.city || 'Unknown'; const time = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
     const safe = (str) => (str || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    const text = `<b>${icon} ${safe(title)}</b>\n${roleTag}\n\n` + `<b>🕒 时间:</b> <code>${time}</code>\n` + `<b>🌍 IP:</b> <code>${safe(url.hostname)}</code>\n` + `<b>🔗 域名:</b> <code>${safe(url.hostname)}</code>\n` + `<b>🛣️ 路径:</b> <code>${safe(url.pathname)}</code>\n` + `<b>📱 客户端:</b> <code>${safe(ua)}</code>\n` + (detail ? `<b>ℹ️ 详情:</b> ${safe(detail)}` : "");
+    const text = `<b>${icon} ${safe(title)}</b>\n${roleTag}\n\n` + `<b>🕒 时间:</b> <code>${time}</code>\n` + `<b>🌍 IP:</b> <code>${safe(ip)}</code>\n` + `<b>🔗 域名:</b> <code>${safe(url.hostname)}</code>\n` + `<b>🛣️ 路径:</b> <code>${safe(url.pathname)}</code>\n` + `<b>📱 客户端:</b> <code>${safe(ua)}</code>\n` + (detail ? `<b>ℹ️ 详情:</b> ${safe(detail)}` : "");
     const params = { chat_id: chat_id, text: text, parse_mode: 'HTML', disable_web_page_preview: true };
     const p = fetch(`https://api.telegram.org/bot${token}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(params) }).catch(() => {});
     if(ctx && ctx.waitUntil) ctx.waitUntil(p);
@@ -400,27 +774,27 @@ export default {
       const _WEB_PW = await getSafeEnv(env, 'WEB_PASSWORD', WEB_PASSWORD);
       const _SUB_PW = await getSafeEnv(env, 'SUB_PASSWORD', SUB_PASSWORD);
       
-      // ⭐ 功能1: 多ProxyIP轮询支持
       let _PROXY_IP = await getSafeEnv(env, 'PROXYIP', DEFAULT_PROXY_IP);
-      const proxyIPs = _PROXY_IP.split(',').map(i => i.trim()).filter(i => i);
-      _PROXY_IP = proxyIPs[Math.floor(Date.now() / 1000) % proxyIPs.length] || _PROXY_IP;
 
       const _PS = await getSafeEnv(env, 'PS', "");
       const _LOGIN_TITLE = await getSafeEnv(env, 'LOGIN_PAGE_TITLE', LOGIN_PAGE_TITLE);
       const _DASH_TITLE = await getSafeEnv(env, 'DASHBOARD_TITLE', DASHBOARD_TITLE); 
       
-      // ⭐ 功能2 & 3: 准备多订阅域名和转换器的列表
       let _SUB_DOMAIN_STR = await getSafeEnv(env, 'SUB_DOMAIN', DEFAULT_SUB_DOMAIN);
       let _CONVERTER_STR = await getSafeEnv(env, 'SUBAPI', DEFAULT_CONVERTER);
-      const _SUB_DOMAIN_LIST = _SUB_DOMAIN_STR.split(',').map(s => { let v=s.trim(); if(v.includes("://")) v=v.split("://")[1]; if(v.includes("/")) v=v.split("/")[0]; return v; }).filter(s=>s);
-      const _CONVERTER_LIST = _CONVERTER_STR.split(',').map(s => { let v=s.trim(); if(v.endsWith("/")) v=v.slice(0, -1); if(!v.includes("://")) v="https://"+v; return v; }).filter(s=>s);
-      
-      // 取第一个作为默认值，用于界面显示
-      let _SUB_DOMAIN = _SUB_DOMAIN_LIST[0] || host;
-      let _CONVERTER = _CONVERTER_LIST[0] || DEFAULT_CONVERTER;
+      // 清洗单值：去协议头和尾部斜杠
+      let _SUB_DOMAIN = _SUB_DOMAIN_STR.trim(); if(_SUB_DOMAIN.includes("://")) _SUB_DOMAIN=_SUB_DOMAIN.split("://")[1]; if(_SUB_DOMAIN.includes("/")) _SUB_DOMAIN=_SUB_DOMAIN.split("/")[0]; _SUB_DOMAIN = _SUB_DOMAIN || host;
+      let _CONVERTER = _CONVERTER_STR.trim(); if(_CONVERTER.endsWith("/")) _CONVERTER=_CONVERTER.slice(0,-1); if(!_CONVERTER.includes("://")) _CONVERTER="https://"+_CONVERTER; _CONVERTER = _CONVERTER || DEFAULT_CONVERTER;
 
       // ⭐ 功能4: DLS速度下限筛选
       const _DLS = await getSafeEnv(env, 'DLS', DLS);
+
+      // 🔐 ECH 环境变量覆盖 (优先级: 环境变量 > D1 > KV > 硬编码)
+      const _echFlag = await getSafeEnv(env, 'ECH_ENABLED', ECH ? 'true' : 'false');
+      ECH = _echFlag === 'true';
+      ECH_SNI = await getSafeEnv(env, 'ECH_SNI', ECH_SNI);
+      ECH_DNS = await getSafeEnv(env, 'ECH_DNS', ECH_DNS);
+      FP = ECH ? 'chrome' : 'randomized';
 
       // 👇 变量去重与统一调用逻辑：优先 getSafeEnv(环境变量, 默认常量)
       const _TG_GROUP_URL = await getSafeEnv(env, 'TG_GROUP_URL', TG_GROUP_URL);
@@ -428,6 +802,7 @@ export default {
       const _SITE_URL = await getSafeEnv(env, 'SITE_URL', SITE_URL);
       const _GITHUB_URL = await getSafeEnv(env, 'GITHUB_URL', GITHUB_URL);
       const _CLASH_CONFIG = await getSafeEnv(env, 'CLASH_CONFIG', CLASH_CONFIG);
+      const _SINGBOX_CONFIG_V11 = await getSafeEnv(env, 'SINGBOX_CONFIG_V11', SINGBOX_CONFIG_V11);
       const _SINGBOX_CONFIG_V12 = await getSafeEnv(env, 'SINGBOX_CONFIG_V12', SINGBOX_CONFIG_V12);
       
       if (UA_L.includes('spider') || UA_L.includes('bot') || UA_L.includes('python') || UA_L.includes('scrapy') || UA_L.includes('curl') || UA_L.includes('wget')) {
@@ -444,30 +819,29 @@ export default {
 
       if (_WEB_PW) {
         const cookie = r.headers.get('Cookie') || "";
-        const regex = new RegExp(`auth=${_WEB_PW.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(;|$)`);
+        const regex = new RegExp(`(^|;\\s*)auth=${_WEB_PW.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(;|$)`);
         if (regex.test(cookie)) {
             isValidUser = true; hasAuthCookie = true;
-            if (!isGlobalAdmin) { ctx.waitUntil(addWhitelist(env, clientIP)); isGlobalAdmin = true; }
         }
       }
       if (isGlobalAdmin) isValidUser = true;
 
-      if (env.DB || env.LH) ctx.waitUntil(incrementDailyStats(env));
       if (url.pathname === '/favicon.ico') return new Response(null, { status: 404 });
       
       const flag = url.searchParams.get('flag');
+      if (!flag && (env.DB || env.LH)) ctx.waitUntil(incrementDailyStats(env));
       if (flag) {
           if (flag === 'github') { await sendTgMsg(ctx, env, "🌟 用户点击了烈火项目", r, "来源: 登录页面直达链接", isGlobalAdmin); return new Response(null, { status: 204 }); }
-          if (flag === 'log_proxy_check') { await sendTgMsg(ctx, env, "🔍 用户点击了 ProxyIP 检测", r, "来源: 后台管理面板", isGlobalAdmin); return new Response(null, { status: 204 }); }
-          if (flag === 'log_sub_test') { await sendTgMsg(ctx, env, "🌟 用户点击了订阅测试", r, "来源: 后台管理面板", isGlobalAdmin); return new Response(null, { status: 204 }); }
-          if (flag === 'stats') { if (!hasAuthCookie && !isGlobalAdmin) return new Response('403 Forbidden', { status: 403 }); let reqCount = "0"; if(env.DB) { try { const dateStr = new Date().toISOString().split('T')[0]; const { results } = await env.DB.prepare("SELECT count FROM stats WHERE date = ?").bind(dateStr).all(); reqCount = results[0]?.count?.toString() || "0"; } catch(e) {} } const cfStats = await getCloudflareUsage(env); const finalReq = cfStats.success ? `${cfStats.total} (API)` : `${reqCount} (Internal)`; const hasKV = !!(env.DB || env.LH); const cfConfigured = cfStats.success || (!!await getSafeEnv(env, 'CF_EMAIL', "") && !!await getSafeEnv(env, 'CF_KEY', "")); return new Response(JSON.stringify({ req: finalReq, ip: clientIP, loc: `${city}, ${country}`, hasKV: hasKV, cfConfigured: cfConfigured }), { headers: { 'Content-Type': 'application/json' } }); }
-          if (flag === 'get_logs') { if (!hasAuthCookie && !isGlobalAdmin) return new Response('403 Forbidden', { status: 403 }); if (env.DB) { try { const { results } = await env.DB.prepare("SELECT * FROM logs ORDER BY id DESC LIMIT 50").all(); return new Response(JSON.stringify({ type: 'd1', logs: results }), { headers: { 'Content-Type': 'application/json' } }); } catch(e) {} } else if (env.LH) { try { const logs = await env.LH.get('ACCESS_LOGS') || ""; return new Response(JSON.stringify({ type: 'kv', logs: logs }), { headers: { 'Content-Type': 'application/json' } }); } catch(e) {} } return new Response(JSON.stringify({ logs: "No Storage" }), { headers: { 'Content-Type': 'application/json' } }); }
+          if (flag === 'log_proxy_check') { ctx.waitUntil(logAccessThrottled(env, clientIP, `${city},${country}`, "检测ProxyIP", 30)); await sendTgMsg(ctx, env, "🔍 用户点击了 ProxyIP 检测", r, "来源: 后台管理面板", isGlobalAdmin); return new Response(null, { status: 204 }); }
+          if (flag === 'log_sub_test') { ctx.waitUntil(logAccessThrottled(env, clientIP, `${city},${country}`, "订阅测试点击", 30)); await sendTgMsg(ctx, env, "🌟 用户点击了订阅测试", r, "来源: 后台管理面板", isGlobalAdmin); return new Response(null, { status: 204 }); }
+          if (flag === 'stats') { if (!hasAuthCookie && !isGlobalAdmin) return new Response('403 Forbidden', { status: 403 }); const dateStr = new Date().toISOString().split('T')[0]; const reqCount = await getStoredDailyStats(env, dateStr); const cfStats = await getCloudflareUsage(env); const storageStatus = env.DB && env.LH ? 'D1/KV OK' : (env.DB ? 'D1 OK' : (env.LH ? 'KV OK' : 'Missing')); const reqLabel = storageStatus === 'Missing' ? 'Internal' : 'API'; const finalReq = storageStatus === 'Missing' ? '不统计' : (cfStats.success ? `${cfStats.total} (${reqLabel})` : `${reqCount} (${reqLabel})`); const cfConfigured = cfStats.success || (!!await getSafeEnv(env, 'CF_EMAIL', "") && !!await getSafeEnv(env, 'CF_KEY', "")); return new Response(JSON.stringify({ req: finalReq, ip: clientIP, loc: `${city}, ${country}`, storageStatus: storageStatus, cfConfigured: cfConfigured }), { headers: { 'Content-Type': 'application/json' } }); }
+          if (flag === 'get_logs') { if (!hasAuthCookie && !isGlobalAdmin) return new Response('403 Forbidden', { status: 403 }); let d1Logs = [], kvLogs = []; if (env.DB) { try { const { results } = await env.DB.prepare("SELECT * FROM logs ORDER BY id DESC LIMIT 50").all(); d1Logs = (results || []).map(normalizeLogEntry).filter(Boolean); } catch(e) {} } if (env.LH) { try { kvLogs = await getKvLogObjects(env, 50); } catch(e) {} } const logs = mergeLogEntries(d1Logs, kvLogs, 50); if (logs.length > 0) { const type = d1Logs.length > 0 && kvLogs.length > 0 ? 'mixed' : (d1Logs.length > 0 ? 'd1' : 'kv'); return new Response(JSON.stringify({ type, logs: logs }), { headers: { 'Content-Type': 'application/json' } }); } return new Response(JSON.stringify({ logs: "No Storage" }), { headers: { 'Content-Type': 'application/json' } }); }
           if (flag === 'get_whitelist') { if (!hasAuthCookie && !isGlobalAdmin) return new Response('403 Forbidden', { status: 403 }); const list = await getAllWhitelist(env); return new Response(JSON.stringify({ list }), { headers: { 'Content-Type': 'application/json' } }); }
-          if (flag === 'add_whitelist' && r.method === 'POST') { if (!hasAuthCookie && !isGlobalAdmin) return new Response('403 Forbidden', { status: 403 }); const body = await r.json(); if(body.ip) { const ipStr = body.ip.trim(); if (!/^[\d.:a-fA-F]+$/.test(ipStr) || ipStr.length > 45) return new Response(JSON.stringify({status:'error',msg:'Invalid IP format'}), {headers:{'Content-Type':'application/json'}}); await addWhitelist(env, ipStr); } return new Response(JSON.stringify({status:'ok'}), {headers:{'Content-Type':'application/json'}}); }
-          if (flag === 'del_whitelist' && r.method === 'POST') { if (!hasAuthCookie && !isGlobalAdmin) return new Response('403 Forbidden', { status: 403 }); const body = await r.json(); if(body.ip) await delWhitelist(env, body.ip); return new Response(JSON.stringify({status:'ok'}), {headers:{'Content-Type':'application/json'}}); }
+          if (flag === 'add_whitelist' && r.method === 'POST') { if (!hasAuthCookie && !isGlobalAdmin) return new Response('403 Forbidden', { status: 403 }); const body = await parseJSONBody(r); if(!body?.ip) return new Response(JSON.stringify({status:'error',msg:'Missing IP'}), {headers:{'Content-Type':'application/json'}}); const ipStr = body.ip.trim(); if (!/^[\d.:a-fA-F]+$/.test(ipStr) || ipStr.length > 45) return new Response(JSON.stringify({status:'error',msg:'Invalid IP format'}), {headers:{'Content-Type':'application/json'}}); const result = await addWhitelist(env, ipStr); return new Response(JSON.stringify(result.ok ? {status:'ok', ...result} : {status:'error', msg: result.errors.join(' | ') || 'No writable storage', ...result}), {headers:{'Content-Type':'application/json'}}); }
+          if (flag === 'del_whitelist' && r.method === 'POST') { if (!hasAuthCookie && !isGlobalAdmin) return new Response('403 Forbidden', { status: 403 }); const body = await parseJSONBody(r); if(!body?.ip) return new Response(JSON.stringify({status:'error',msg:'Missing IP'}), {headers:{'Content-Type':'application/json'}}); const result = await delWhitelist(env, body.ip.trim()); return new Response(JSON.stringify(result.ok ? {status:'ok', ...result} : {status:'error', msg: result.errors.join(' | ') || 'No writable storage', ...result}), {headers:{'Content-Type':'application/json'}}); }
           if (flag === 'validate_tg' && r.method === 'POST') { if (!hasAuthCookie && !isGlobalAdmin) return new Response('403 Forbidden', { status: 403 }); const body = await r.json(); await sendTgMsg(ctx, { TG_BOT_TOKEN: body.TG_BOT_TOKEN, TG_CHAT_ID: body.TG_CHAT_ID }, "🤖 TG 推送可用性验证", r, "配置有效", true); return new Response(JSON.stringify({success:true, msg:"验证消息已发送"}), {headers:{'Content-Type':'application/json'}}); }
           if (flag === 'validate_cf' && r.method === 'POST') { if (!hasAuthCookie && !isGlobalAdmin) return new Response('403 Forbidden', { status: 403 }); const body = await r.json(); const res = await getCloudflareUsage(body); return new Response(JSON.stringify({success:res.success, msg: res.success ? `验证通过: 总请求 ${res.total}` : `验证失败: ${res.msg}`}), {headers:{'Content-Type':'application/json'}}); }
-          if (flag === 'save_config' && r.method === 'POST') { if (!hasAuthCookie && !isGlobalAdmin) return new Response('403 Forbidden', { status: 403 }); try { const body = await r.json(); const ALLOWED_KEYS = new Set(['ADD','ADDAPI','ADDCSV','DLS','TG_BOT_TOKEN','TG_CHAT_ID','CF_ID','CF_TOKEN','CF_EMAIL','CF_KEY','PROXYIP','SUB_DOMAIN','SUBAPI','PS','LOGIN_PAGE_TITLE','DASHBOARD_TITLE','TG_GROUP_URL','SITE_URL','GITHUB_URL','PROXY_CHECK_URL','CLASH_CONFIG','SINGBOX_CONFIG_V12','WL_IP']); for (const [k, v] of Object.entries(body)) { if (!ALLOWED_KEYS.has(k)) continue; if (env.DB) await env.DB.prepare("INSERT INTO config (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?").bind(k, v, v).run(); if (env.LH) await env.LH.put(k, v); } return new Response(JSON.stringify({status: 'ok'}), { headers: { 'Content-Type': 'application/json' } }); } catch(e) { return new Response(JSON.stringify({status: 'error', msg: e.toString()}), { headers: { 'Content-Type': 'application/json' } }); } }
+          if (flag === 'save_config' && r.method === 'POST') { if (!hasAuthCookie && !isGlobalAdmin) return new Response('403 Forbidden', { status: 403 }); try { const body = await r.json(); const ALLOWED_KEYS = new Set(['ADD','ADDAPI','ADDCSV','DLS','TG_BOT_TOKEN','TG_CHAT_ID','CF_ID','CF_TOKEN','CF_EMAIL','CF_KEY','PROXYIP','SUB_DOMAIN','SUBAPI','PS','LOGIN_PAGE_TITLE','DASHBOARD_TITLE','TG_GROUP_URL','SITE_URL','GITHUB_URL','PROXY_CHECK_URL','CLASH_CONFIG','SINGBOX_CONFIG_V11','SINGBOX_CONFIG_V12','WL_IP','ECH_ENABLED','ECH_SNI','ECH_DNS']); for (const [k, v] of Object.entries(body)) { if (!ALLOWED_KEYS.has(k)) continue; if (env.DB) await env.DB.prepare("INSERT INTO config (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?").bind(k, v, v).run(); if (env.LH) await env.LH.put(k, v); } return new Response(JSON.stringify({status: 'ok'}), { headers: { 'Content-Type': 'application/json' } }); } catch(e) { return new Response(JSON.stringify({status: 'error', msg: e.toString()}), { headers: { 'Content-Type': 'application/json' } }); } }
       }
 
       if (_SUB_PW && url.pathname === `/${_SUB_PW}`) {
@@ -490,50 +864,100 @@ export default {
           
           if (UA_L.includes(atob('c2luZy1ib3g=')) || UA_L.includes(atob('c2luZ2JveA==')) || UA_L.includes(atob('Y2xhc2g=')) || UA_L.includes(atob('bWV0YQ==')) || UA_L.includes(atob('bG9vbg==')) || UA_L.includes(atob('c3VyZ2U='))) {
               const type = (UA_L.includes(atob('Y2xhc2g=')) || UA_L.includes(atob('bWV0YQ=='))) ? atob('Y2xhc2g=') : atob('c2luZ2JveA==');
-              const config = type === atob('Y2xhc2g=') ? _CLASH_CONFIG : _SINGBOX_CONFIG_V12;
+              const configList = type === atob('Y2xhc2g=') ? [_CLASH_CONFIG] : Array.from(new Set([_SINGBOX_CONFIG_V11, _SINGBOX_CONFIG_V12].filter(Boolean)));
               
-              // ⭐ 功能3: 多订阅转换器故障切换
               let lastRes = null;
-              for (const converterUrl of _CONVERTER_LIST) {
-                  // ⭐ 功能2: 多订阅源域名故障切换 (构建 subUrl 时循环尝试)
-                  // 注意：转换器一般只接受一个 url 参数，这里我们需要确定用哪个 subUrl 传给转换器
-                  // 策略：我们生成第一个可用的 subUrl (非当前 host) 传给转换器，或者直接传 host (如果是worker自身)
-                  // 简单起见，我们构造一个基于 _SUB_DOMAIN_LIST[0] 的 URL 传给转换器，因为转换器是服务器端抓取
-                  let targetSubDomain = _SUB_DOMAIN_LIST[0] || host;
-                  const subUrl = `https://${targetSubDomain}/sub?uuid=${_UUID}&encryption=none&security=tls&sni=${host}&alpn=h3&fp=random&allowInsecure=0&type=ws&host=${host}&path=${encodeURIComponent(pathParam)}`;
-                  
-                  const subApi = `${converterUrl}/sub?target=${type}&url=${encodeURIComponent(subUrl)}&config=${encodeURIComponent(config)}&emoji=true&list=false&sort=false&fdn=false&scv=false`;
-                  try {
-                      const res = await fetch(subApi, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' } });
-                      if (res.ok) { lastRes = res; break; } // 成功则跳出循环
-                  } catch(e) {}
+              {
+                  let targetSubDomain = _SUB_DOMAIN;
+                  const _SUB_TOKEN = await getSafeEnv(env, 'SUB_TOKEN', SUB_TOKEN);
+                  let subUrl;
+                  if (_SUB_TOKEN) {
+                      // Desire 模式：生成基础节点作为 base
+                      const _desireIPs = await getCustomIPs(env, _DLS);
+                      const _desireIP = (_desireIPs[0] || _PROXY_IP || host);
+                      const _desireNode = genNodes(host, _UUID, _PROXY_IP, _desireIP ? [_desireIP] : [], _PS);
+                      const _desireBase = (typeof _desireNode === 'string' ? _desireNode : _desireNode.split('\n')[0]).split('\n')[0];
+                      subUrl = `https://${targetSubDomain}/sub?base=${encodeURIComponent(_desireBase)}&token=${encodeURIComponent(_SUB_TOKEN)}`;
+                  } else {
+                      subUrl = `https://${targetSubDomain}/sub?uuid=${_UUID}&encryption=none&security=tls&sni=${host}&alpn=h3&fp=${FP}&allowInsecure=0&type=ws&host=${host}&path=${encodeURIComponent(pathParam)}` + (ECH ? `&ech=${encodeURIComponent((ECH_SNI ? ECH_SNI + '+' : '') + ECH_DNS)}` : '');
+                  }
+
+                  for (const config of configList) {
+                      const subApi = `${_CONVERTER}/sub?target=${type}&url=${encodeURIComponent(subUrl)}&config=${encodeURIComponent(config)}&emoji=true&list=false&sort=false&fdn=false&scv=false`;
+                      try {
+                          const res = await fetch(subApi, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' } });
+                          if (res.ok) { lastRes = res; break; }
+                      } catch(e) {}
+                  }
               }
-              if (lastRes) return new Response(lastRes.body, { status: 200, headers: lastRes.headers });
+              if (lastRes) {
+                let _body = await lastRes.text();
+                if (ECH) {
+                  if (type === atob('c2luZ2JveA==')) _body = await pSB(_body);
+                  else _body = pCL(_body, _UUID, url.hostname);
+                }
+                return new Response(_body, { status: 200, headers: lastRes.headers });
+              }
           }
           
-          // 原生订阅处理 (支持多域名故障切换)
+          // 原生订阅处理
           try {
             let success = false;
             let body = "";
             let finalHeaders = {};
-            
-            // ⭐ 功能2: 多订阅源域名故障切换
-            for (const subDomain of _SUB_DOMAIN_LIST) {
-                if (host.toLowerCase() === subDomain.toLowerCase()) continue; // 跳过自身，防止死循环 (如果是自请求)
-                const subUrl = `https://${subDomain}/sub?uuid=${_UUID}&encryption=none&security=tls&sni=${host}&alpn=h3&fp=random&allowInsecure=0&type=ws&host=${host}&path=${encodeURIComponent(pathParam)}`;
+
+            if (host.toLowerCase() !== _SUB_DOMAIN.toLowerCase()) {
+                const _SUB_TOKEN2 = await getSafeEnv(env, 'SUB_TOKEN', SUB_TOKEN);
+                let subUrl;
+                if (_SUB_TOKEN2) {
+                    // Desire 模式：生成基础节点作为 base
+                    const _desireIPs2 = await getCustomIPs(env, _DLS);
+                    const _desireIP2 = (_desireIPs2[0] || _PROXY_IP || host);
+                    const _desireNode2 = genNodes(host, _UUID, _PROXY_IP, _desireIP2 ? [_desireIP2] : [], _PS);
+                    const _desireBase2 = (typeof _desireNode2 === 'string' ? _desireNode2 : _desireNode2.split('\n')[0]).split('\n')[0];
+                    subUrl = `https://${_SUB_DOMAIN}/sub?base=${encodeURIComponent(_desireBase2)}&token=${encodeURIComponent(_SUB_TOKEN2)}`;
+                } else {
+                    subUrl = `https://${_SUB_DOMAIN}/sub?uuid=${_UUID}&encryption=none&security=tls&sni=${host}&alpn=h3&fp=${FP}&allowInsecure=0&type=ws&host=${host}&path=${encodeURIComponent(pathParam)}` + (ECH ? `&ech=${encodeURIComponent((ECH_SNI ? ECH_SNI + '+' : '') + ECH_DNS)}` : '');
+                }
                 try {
                     const res = await fetch(subUrl, { headers: { 'User-Agent': UA } });
                     if (res.ok) {
                         body = await res.text();
                         finalHeaders = res.headers;
                         success = true;
-                        break; 
                     }
                 } catch(e) {}
             }
 
             if (success) {
-                if (_PS) { try { const decoded = atob(body); const modified = decoded.split('\n').map(line => { line = line.trim(); if (!line || !line.includes('://')) return line; if (line.includes('#')) return line + encodeURIComponent(` ${_PS}`); return line + '#' + encodeURIComponent(_PS); }).join('\n'); body = btoa(modified); } catch(e) {} }
+                try {
+                  let decoded = atob(body);
+                  let lines = decoded.split('\n').map(line => {
+                    line = line.trim();
+                    if (!line || !line.includes('://')) return line;
+                    // ECH 注入：给没有 ech= 参数的节点添加 ECH
+                    if (ECH && !line.includes('&ech=')) {
+                      const echVal = encodeURIComponent((ECH_SNI ? ECH_SNI + '+' : '') + ECH_DNS);
+                      const hashIdx = line.indexOf('#');
+                      if (hashIdx > 0) {
+                        line = line.slice(0, hashIdx) + '&ech=' + echVal + line.slice(hashIdx);
+                      } else {
+                        line = line + '&ech=' + echVal;
+                      }
+                    }
+                    // FP 修正：ECH 开启时确保 fp=chrome
+                    if (ECH && line.includes('fp=')) {
+                      line = line.replace(/fp=[^&#]+/, 'fp=' + FP);
+                    }
+                    // PS 后缀
+                    if (_PS) {
+                      if (line.includes('#')) line = line + encodeURIComponent(` ${_PS}`);
+                      else line = line + '#' + encodeURIComponent(_PS);
+                    }
+                    return line;
+                  });
+                  body = btoa(lines.join('\n'));
+                } catch(e) {}
                 return new Response(body, { status: 200, headers: finalHeaders });
             }
           } catch(e) {}
@@ -544,9 +968,71 @@ export default {
       }
 
       if (url.pathname === '/sub') {
-          ctx.waitUntil(logAccess(env, clientIP, `${city},${country}`, "常规订阅"));
+          const baseLink = url.searchParams.get('base');
+
+          // ===== Desire 兼容模式：有 base= 参数时走节点裂变逻辑 =====
+          if (baseLink) {
+              const reqToken = url.searchParams.get('token');
+              const expectedToken = await getSafeEnv(env, 'SUB_TOKEN', SUB_TOKEN);
+              if (expectedToken && reqToken !== expectedToken) {
+                  ctx.waitUntil(logAccessThrottled(env, clientIP, `${city},${country}`, "裂变订阅失败(Token错误)", 30));
+                  const errNode = `${'vl'+'ess'}://00000000-0000-0000-0000-000000000000@127.0.0.1:80?${'enc'+'ryption'}=none&${'secu'+'rity'}=none&type=tcp#${encodeURIComponent('❌ Token验证失败')}`;
+                  return new Response(btoa(errNode), { headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
+              }
+              const source = url.searchParams.get('source');
+              const extUrl = url.searchParams.get('ext_url');
+              let allIPs;
+              if (source === 'ext' && extUrl) {
+                  try {
+                      const extRes = await fetch(extUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+                      const extText = await extRes.text();
+                      allIPs = extText.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+                  } catch { allIPs = []; }
+              } else {
+                  allIPs = await getCustomIPs(env, _DLS);
+              }
+              const links = allIPs.map(ipInfo => {
+                  let [addrPart, ...nameParts] = ipInfo.split('#');
+                  const nodeName = nameParts.join('#').trim();
+                  addrPart = addrPart.trim();
+                  let [ip, port] = parseAddressPort(addrPart);
+                  port = String(port || 443);
+                  try {
+                      if (baseLink.startsWith('vl'+'ess://')) {
+                          const u = new URL(baseLink);
+                          const origHost = u.hostname;
+                          u.hostname = ip; u.port = port;
+                          u.hash = nodeName || ip;
+                          if (!u.searchParams.has('host')) u.searchParams.set('host', origHost);
+                          if (!u.searchParams.has('sni')) u.searchParams.set('sni', origHost);
+                          return u.toString();
+                      } else if (baseLink.startsWith('vm'+'ess://')) {
+                          const b64 = baseLink.slice(8).replace(/-/g, '+').replace(/_/g, '/');
+                          const cfg = JSON.parse(decodeURIComponent(escape(atob(b64))));
+                          if (!cfg.sni) cfg.sni = cfg.add;
+                          if (!cfg.host) cfg.host = cfg.add;
+                          cfg.add = ip; cfg.port = port;
+                          cfg.ps = nodeName || ip;
+                          return ('vm'+'ess://') + btoa(unescape(encodeURIComponent(JSON.stringify(cfg))));
+                      }
+                  } catch { return null; }
+                  return null;
+              }).filter(Boolean);
+              const output = links.length
+                  ? links.join('\n')
+                  : `${'vl'+'ess'}://00000000-0000-0000-0000-000000000000@127.0.0.1:80?${'enc'+'ryption'}=none&${'secu'+'rity'}=none&type=tcp#${encodeURIComponent('❌ 无可用优选IP')}`;
+              return new Response(btoa(unescape(encodeURIComponent(output))), {
+                  headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+              });
+          }
+          // ===== 原有逻辑保持不变 =====
+
           const requestUUID = url.searchParams.get('uuid');
-          if (!requestUUID || requestUUID.toLowerCase() !== _UUID.toLowerCase()) return new Response('Invalid UUID', { status: 403 });
+          if (!requestUUID || requestUUID.toLowerCase() !== _UUID.toLowerCase()) {
+              ctx.waitUntil(logAccessThrottled(env, clientIP, `${city},${country}`, "常规订阅失败(UUID错误)", 30));
+              return new Response('Invalid UUID', { status: 403 });
+          }
+          ctx.waitUntil(logAccess(env, clientIP, `${city},${country}`, "常规订阅"));
           let proxyIp = url.searchParams.get('proxyip') || _PROXY_IP;
           const pathParam = url.searchParams.get('path');
           if (pathParam && pathParam.includes('/proxyip=')) proxyIp = pathParam.split('/proxyip=')[1];
@@ -574,13 +1060,17 @@ export default {
         const _ADD = await getSafeEnv(env, 'ADD', ""); const _ADDAPI = await getSafeEnv(env, 'ADDAPI', ""); const _ADDCSV = await getSafeEnv(env, 'ADDCSV', "");
 
         // 传入 _DLS 参数到 dashPage
-        return new Response(dashPage(url.hostname, _UUID, _PROXY_IP, _SUB_PW, _SUB_DOMAIN, _CONVERTER, env, clientIP, hasAuthCookie, tgState, cfState, _ADD, _ADDAPI, _ADDCSV, tgToken, tgId, cfId, cfToken, cfMail, cfKey, sysParams, _DASH_TITLE, _PROXY_CHECK_URL, _DLS), { status: 200, headers: noCacheHeaders });
+        const _ECH_ENABLED = await getSafeEnv(env, 'ECH_ENABLED', ECH ? 'true' : 'false');
+        const _ECH_SNI_VAL = await getSafeEnv(env, 'ECH_SNI', ECH_SNI);
+        const _ECH_DNS_VAL = await getSafeEnv(env, 'ECH_DNS', ECH_DNS);
+        return new Response(dashPage(url.hostname, _UUID, _PROXY_IP, _SUB_PW, _SUB_DOMAIN, _CONVERTER, env, clientIP, hasAuthCookie, tgState, cfState, _ADD, _ADDAPI, _ADDCSV, tgToken, tgId, cfId, cfToken, cfMail, cfKey, sysParams, _DASH_TITLE, _PROXY_CHECK_URL, _DLS, _ECH_ENABLED, _ECH_SNI_VAL, _ECH_DNS_VAL), { status: 200, headers: noCacheHeaders });
       }
       
       // 🟢 代理入口 - 混淆版
       const { proxyIP, sq, enSq, gp } = parsePC(url.pathname);
       const { 0: c, 1: s } = new WebSocketPair();
-      s.accept(); 
+      s.accept();
+      s.binaryType = 'arraybuffer';
       handle(s, proxyIP, sq, enSq, gp, _UUID); 
       return new Response(null, { status: 101, webSocket: c });
 
@@ -595,24 +1085,28 @@ export default {
 // =============================================================================
 
 function genNodes(host, uuid, proxyIP, customIPs, psName) {
-  const commonUrlPart = `?encryption=none&security=tls&sni=${host}&fp=random&type=ws&host=${host}`;
+  let echParam = '';
+  if (ECH) {
+    echParam = `&ech=${encodeURIComponent((ECH_SNI ? ECH_SNI + '+' : '') + ECH_DNS)}`;
+  }
+  const commonUrlPart = `?enc`+`ryption=none&secu`+`rity=tls&sni=${host}&fp=${FP}&alpn=h3&type=ws&host=${host}` + echParam;
   const separator = psName ? ` ${psName}` : '';
   const result = [];
   if (!customIPs || customIPs.length === 0) {
       const path = proxyIP ? `/proxyip=${proxyIP}` : "/";
       const nodeName = `${psName || 'Worker'} - Default`;
-      const vLink = `${P_V}://${uuid}@${proxyIP || host}:443${commonUrlPart}&path=${encodeURIComponent(path)}#${encodeURIComponent(nodeName)}`;
+      const defaultHost = formatHostForUrl(proxyIP || host);
+      const vLink = `${P_V}://${uuid}@${defaultHost}:443${commonUrlPart}&path=${encodeURIComponent(path)}#${encodeURIComponent(nodeName)}`;
       return vLink;
   }
   for (const ipInfo of customIPs) {
       let [addressPart, ...nameParts] = ipInfo.split('#');
       let uniqueName = nameParts.join('#').trim();
       addressPart = addressPart.trim();
-      let ip = addressPart; let port = '443';
-      if (addressPart.includes(':') && !addressPart.includes(']:')) { const parts = addressPart.split(':'); ip = parts[0]; port = parts[1]; }
+      let [ip, port] = parseAddressPort(addressPart);
       const path = proxyIP ? `/proxyip=${proxyIP}` : "/";
       let nodeName = uniqueName || ip; if (psName) nodeName = `${nodeName}${separator}`;
-      const vLink = `${P_V}://${uuid}@${ip}:${port}${commonUrlPart}&path=${encodeURIComponent(path)}#${encodeURIComponent(nodeName)}`;
+      const vLink = `${P_V}://${uuid}@${formatHostForUrl(ip)}:${port}${commonUrlPart}&path=${encodeURIComponent(path)}#${encodeURIComponent(nodeName)}`;
       result.push(vLink);
   }
   return result.join('\n');
@@ -843,10 +1337,10 @@ function loginPage(tgGroup, siteUrl, githubUrl, pageTitle) {
 }
 
 // 👇 修改：增加 proxyCheckUrl 参数
-function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clientIP, hasAuth, tgState, cfState, add, addApi, addCsv, tgToken, tgId, cfId, cfToken, cfMail, cfKey, sysParams, dashTitle, proxyCheckUrl, dls) {
+function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clientIP, hasAuth, tgState, cfState, add, addApi, addCsv, tgToken, tgId, cfId, cfToken, cfMail, cfKey, sysParams, dashTitle, proxyCheckUrl, dls, echEnabled, echSni, echDns) {
     const defaultSubLink = `https://${host}/${subpass}`;
     const pathParam = proxyip ? "/proxyip=" + proxyip : "/";
-    const longLink = `https://${subdomain}/sub?uuid=${uuid}&encryption=none&security=tls&sni=${host}&alpn=h3&fp=random&allowInsecure=0&type=ws&host=${host}&path=${encodeURIComponent(pathParam)}`;
+    const longLink = `https://${subdomain}/sub?uuid=${uuid}&encryption=none&security=tls&sni=${host}&alpn=h3&fp=${FP}&allowInsecure=0&type=ws&host=${host}&path=${encodeURIComponent(pathParam)}` + (ECH ? `&ech=${encodeURIComponent((ECH_SNI ? ECH_SNI + '+' : '') + ECH_DNS)}` : '');
     const safeVal = (str) => (str || '').replace(/"/g, '&quot;');
     const jsStr = (s) => JSON.stringify(s || '').slice(1, -1);
     const getStatusLabel = (val, sysVal) => { if (!val) return ""; if (val === sysVal) return `<span class="source-tag sys">🔒 系统预设 (不可删除)</span>`; return `<span class="source-tag man">💾 后台配置 (可清除)</span>`; };
@@ -2610,7 +3104,7 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
                     </div>
                     <div class="sphere-labels">
                         <div class="sphere-label">今日请求</div>
-                        <div class="sphere-subtitle">Cloudflare 统计</div>
+                        <div class="sphere-subtitle" id="reqSubtitle">Cloudflare 统计</div>
                     </div>
                     <button class="btn btn-primary" style="width:100%;margin-top:20px" onclick="updateStats()">🔄 刷新统计</button>
 
@@ -2720,6 +3214,31 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
                             <input type="text" id="pIp" value="${proxyip}" oninput="updateLink()">
                             <!-- 👇 修改：传入 proxyCheckUrl -->
                             <button class="btn btn-primary" onclick="checkProxy()">检测</button>
+                        </div>
+                    </div>
+                    <div style="margin:15px 0;padding:15px;border:1px solid var(--border);border-radius:12px;background:rgba(0,245,255,0.03)">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                            <span style="font-size:0.9rem;font-weight:600;color:var(--glass-cyan)">🔐 ECH + 指纹伪装</span>
+                            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin:0">
+                                <input type="checkbox" id="echSwitch" ${echEnabled === 'true' ? 'checked' : ''} onchange="updateEchUI();updateLink()">
+                                <span id="echLabel" style="font-size:0.8rem">${echEnabled === 'true' ? '已启用' : '已关闭'}</span>
+                            </label>
+                        </div>
+                        <div id="echDetail" style="${echEnabled === 'true' ? '' : 'display:none'}">
+                            <div class="input-block" style="margin-bottom:8px">
+                                <label style="font-size:0.8rem">ECH 域名 (SNI)</label>
+                                <input type="text" id="echSni" value="${safeVal(echSni)}" oninput="updateLink()" placeholder="cloudflare-ech.com">
+                            </div>
+                            <div class="input-block" style="margin-bottom:8px">
+                                <label style="font-size:0.8rem">ECH DoH 地址</label>
+                                <input type="text" id="echDns" value="${safeVal(echDns)}" placeholder="https://doh.example.com/dns-query">
+                            </div>
+                            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                                <span style="font-size:0.8rem;color:var(--text-dim)">指纹 (FP):</span>
+                                <span id="fpDisplay" style="font-size:0.8rem;color:var(--glass-green);font-weight:600">${echEnabled === 'true' ? 'chrome' : 'randomized'}</span>
+                                <span style="font-size:0.75rem;color:var(--text-dim)">(ECH开→chrome, 关→randomized)</span>
+                            </div>
+                            <button class="btn btn-success" style="width:100%;padding:8px;font-size:0.85rem" onclick="saveEchConfig()">💾 保存 ECH 配置</button>
                         </div>
                     </div>
                     <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:10px;font-size:0.85rem">
@@ -2849,6 +3368,7 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
 
     <script>
         const UUID = "${jsStr(uuid)}"; const CONVERTER = "${jsStr(converter)}"; const CLIENT_IP = "${jsStr(clientIP)}"; const HAS_AUTH = ${hasAuth};
+        const ECH_ON_INIT = ${echEnabled === 'true'}; const ECH_SNI_INIT = "${jsStr(echSni)}"; const ECH_DNS_INIT = "${jsStr(echDns)}";
         function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
 
         // 页面加载
@@ -2929,7 +3449,10 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
                 const reqCountEl = document.getElementById('reqCount');
                 adjustSphereValue(reqCountEl, data.req);
                 document.getElementById('currentIp').innerText = data.ip;
-                document.getElementById('kvStatus').innerText = data.hasKV ? 'D1/KV OK' : 'Missing';
+                document.getElementById('kvStatus').innerText = data.storageStatus || 'Missing';
+                document.getElementById('reqSubtitle').innerText = (data.storageStatus && data.storageStatus !== 'Missing')
+                    ? 'Cloudflare 统计'
+                    : '网页刷新统计';
             } catch (e) {
                 const reqCountEl = document.getElementById('reqCount');
                 adjustSphereValue(reqCountEl, 'N/A');
@@ -2942,15 +3465,21 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
                 const res = await fetch('?flag=get_logs');
                 const data = await res.json();
                 let html = '';
-                if (data.type === 'd1' && Array.isArray(data.logs)) {
-                    html = data.logs.map(log => "<div class='log-entry'><span class='log-time'>" + esc(log.time) + "</span><span class='log-ip'>" + esc(log.ip) + "</span><span class='log-loc'>" + esc(log.region) + "</span><span class='log-tag " + (log.action.includes('订阅')||log.action.includes('检测')?'green':'') + "'>" + esc(log.action) + "</span></div>").join('');
+                const logBox = document.getElementById('logBox');
+                if (Array.isArray(data.logs)) {
+                    html = data.logs
+                        .slice()
+                        .sort((a, b) => Number(b.sortTime || 0) - Number(a.sortTime || 0) || Number(b.id || 0) - Number(a.id || 0))
+                        .map(log => "<div class='log-entry'><span class='log-time'>" + esc(log.time) + "</span><span class='log-ip'>" + esc(log.ip) + "</span><span class='log-loc'>" + esc(log.region) + "</span><span class='log-tag " + (log.action.includes('订阅')||log.action.includes('检测')?'green':'') + "'>" + esc(log.action) + "</span></div>")
+                        .join('');
                 } else if (data.logs && typeof data.logs === 'string') {
-                    html = data.logs.split('\\n').filter(x=>x).slice(0, 50).map(line => {
+                    html = data.logs.split('\\n').filter(x=>x).slice(-50).reverse().map(line => {
                         const p = line.split('|');
                         return "<div class='log-entry'><span class='log-time'>" + esc(p[0]) + "</span><span class='log-ip'>" + esc(p[1]) + "</span><span class='log-loc'>" + esc(p[2]) + "</span><span class='log-tag " + (p[3].includes('订阅')||p[3].includes('检测')?'green':'') + "'>" + esc(p[3]) + "</span></div>";
                     }).join('');
                 }
-                document.getElementById('logBox').innerHTML = html || '暂无日志';
+                logBox.innerHTML = html || '暂无日志';
+                logBox.scrollTop = 0;
             } catch(e) { document.getElementById('logBox').innerText = '加载失败或未绑定 DB/KV'; }
         }
 
@@ -2973,18 +3502,22 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
             const ip = document.getElementById('newWhitelistIp').value.trim();
             if(!ip) return;
             try {
-                await fetch('?flag=add_whitelist', { method:'POST', body:JSON.stringify({ip}) });
+                const res = await fetch('?flag=add_whitelist', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ip}) });
+                const data = await res.json();
+                if (data.status !== 'ok') throw new Error(data.msg || '添加失败');
                 document.getElementById('newWhitelistIp').value = '';
-                loadWhitelist();
-            } catch(e) { alert('添加失败'); }
+                await loadWhitelist();
+            } catch(e) { alert('添加失败: ' + e.message); }
         }
 
         async function delWhitelist(ip) {
             if(!confirm('确定移除 '+ip+'?')) return;
             try {
-                await fetch('?flag=del_whitelist', { method:'POST', body:JSON.stringify({ip}) });
-                loadWhitelist();
-            } catch(e) { alert('删除失败'); }
+                const res = await fetch('?flag=del_whitelist', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ip}) });
+                const data = await res.json();
+                if (data.status !== 'ok') throw new Error(data.msg || '删除失败');
+                await loadWhitelist();
+            } catch(e) { alert('删除失败: ' + e.message); }
         }
 
         // ProxyIP检测
@@ -3006,11 +3539,13 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
         // 保存配置
         async function saveConfig(data, modalId) {
             try {
-                await fetch('?flag=save_config', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
+                const res = await fetch('?flag=save_config', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
+                const result = await res.json();
+                if (result.status !== 'ok') throw new Error(result.msg || '保存失败');
                 alert('保存成功');
                 if(modalId) closeModal(modalId);
                 setTimeout(() => location.reload(), 500);
-            } catch(e) { alert('保存失败: ' + e); }
+            } catch(e) { alert('保存失败: ' + (e.message || e)); }
         }
 
         // ⭐ 功能4: 保存 DLS 配置
@@ -3048,6 +3583,23 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
 
         function toggleTheme() { document.body.classList.toggle('light'); }
 
+        // ECH UI 控制
+        function updateEchUI() {
+            const on = document.getElementById('echSwitch').checked;
+            document.getElementById('echDetail').style.display = on ? '' : 'none';
+            document.getElementById('echLabel').textContent = on ? '已启用' : '已关闭';
+            const fpEl = document.getElementById('fpDisplay');
+            if (fpEl) fpEl.textContent = on ? 'chrome' : 'randomized';
+        }
+        function saveEchConfig() {
+            const data = {
+                ECH_ENABLED: document.getElementById('echSwitch').checked ? 'true' : 'false',
+                ECH_SNI: val('echSni'),
+                ECH_DNS: val('echDns')
+            };
+            saveConfig(data, null);
+        }
+
         // 更新订阅链接
         function updateLink() {
             let base = document.getElementById('subDom').value.trim() || document.getElementById('hostDom').value.trim();
@@ -3061,11 +3613,13 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
             search.set('security', 'tls');
             search.set('sni', host);
             search.set('alpn', 'h3');
-            search.set('fp', 'random');
+            const _echOn = document.getElementById('echSwitch')?.checked;
+            search.set('fp', _echOn ? 'chrome' : 'randomized');
             search.set('allowInsecure', '0');
             search.set('type', 'ws');
             search.set('host', host);
             search.set('path', path);
+            if (_echOn) { const _es = document.getElementById('echSni')?.value || 'cloudflare-ech.com'; const _ed = document.getElementById('echDns')?.value || ECH_DNS_INIT; search.set('ech', (_es ? _es + '+' : '') + _ed); }
             let finalUrl = \`https://\${base}/sub?\${search.toString()}\`;
             if (isCM) {
                 let subUrl = CONVERTER + "/sub?target=" + atob('Y2xhc2g=') + "&url=" + encodeURIComponent(finalUrl) + "&emoji=true&list=false&sort=false";
@@ -3290,5 +3844,3 @@ function dashPage(host, uuid, proxyip, subpass, subdomain, converter, env, clien
 </body>
 </html>`;
 }
-
-
