@@ -40,7 +40,7 @@ const P_S5 = 'so'+'cks5';
 
 // ECH + 指纹伪装配置
 let ECH = true;  // ECH 开关 (支持环境变量覆盖)
-let ECH_DNS = 'htt'+'ps://doh.'+'cm'+'liussss.net/'+'CM'+'Liussss';
+let ECH_DNS = 'htt'+'ps://doh.'+'cm'+'liussss.com/'+'CM'+'Liussss';
 let ECH_SNI = 'cloudflare-ech.com';
 let FP = ECH ? 'chrome' : 'randomized';
 
@@ -1142,19 +1142,20 @@ async function getCustomIPs(env, dlsThreshold) {
                 const res = await fetch(url.trim(), { headers: { 'User-Agent': 'Mozilla/5.0' } }); 
                 if (res.ok) { 
                     const text = await res.text(); 
-                    text.split('\n').forEach(line => { 
-                        const trimmed = line.trim(); 
-                        if (!trimmed || trimmed.startsWith('#')) return;
-                        // CSV格式: IP,端口,TLS,数据中心,地区,城市,网络延迟,下载速度
-                        // 索引: 0, 1, 2, 3, 4, 5, 6, 7
+                    text.split('\n').forEach(line => {
+                        const trimmed = line.trim();
+                        if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('IP') || trimmed.includes('端口') || trimmed.includes('速度')) return;
                         const cols = trimmed.split(',');
-                        if (cols.length >= 8) {
-                            const speed = Number(cols[7]);
-                            if (!isNaN(speed) && speed < threshold) return; // 速度低于阈值则跳过
+                        const c1 = (cols.length >= 2) ? cols[1].trim() : '';
+                        const isNewFmt = c1 && (c1.includes(':') || c1.includes('.') || !/^[0-9]+$/.test(c1));
+                        const csvIp = cols[0].trim();
+                        const csvPort = isNewFmt ? ((cols.length >= 3) ? cols[2].trim() : '') : c1;
+                        const speedIdx = isNewFmt ? 3 : 7;
+                        const speedUnit = isNewFmt ? 1024 : 1;
+                        if (cols.length > speedIdx) {
+                            const speed = Number(cols[speedIdx]) * speedUnit;
+                            if (!isNaN(speed) && speed < threshold) return;
                         }
-                        const csvIp = cols[0];
-                        const csvPort = (cols.length >= 2) ? cols[1].trim() : '';
-                        // 将CSV行也尝试作为IP加入 (通常CSV第一列就是IP)
                         if (csvIp) allIPs.push(csvPort && csvPort !== '443' ? csvIp + ':' + csvPort : csvIp);
                     }); 
                 } 
